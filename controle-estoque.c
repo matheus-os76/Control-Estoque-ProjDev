@@ -4,6 +4,7 @@
 #include <strings.h>
 #include <stdlib.h>
 #include <time.h>
+#include <sqlite3.h>
 
 #define LARGURA_MAX_JANELA GetSystemMetrics(SM_CXMAXIMIZED)
 #define ALTURA_MAX_JANELA GetSystemMetrics(SM_CYMAXIMIZED)
@@ -11,156 +12,314 @@
 #define ALTURA_MAX_CONSOLE getmaxy(stdscr)
 #define VERSAO_PROGRAMA 0.1
 
-char nome_empresa[51];
-int total_produtos = 0;
+typedef struct {
+    
+    unsigned short int id;
+    char titulo[30];
 
-void menu(int x, struct tm *y);
+} opcao;
+
+typedef struct {
+
+    unsigned short int id;
+    unsigned long long int id_fabrica;
+    char nome[31];
+    char fabricante[15];
+    char unidade[3];
+    unsigned short int quantidade;
+    float valor_uni;
+    float subtotal;
+
+} produto;
+
+char buffer_sql[120];
+char *erro_sql;
+
+int menu(int opc);
+int sql_retorno(void *Inutilizado, int argc, char **argv, char **coluna);
+int select_id(sqlite3 *BD, int id, produto *P);
+int adicionar_produto(sqlite3 *BD, produto P);
 
 int main()
 {
-    time_t tempo_atual = time(NULL);
-    struct tm *data = localtime(&tempo_atual);
+//  TELA DE ERRO PARA RESOLUÇÃO DO MONITOR FOR PEQUENA DEMAIS          
 
-    SetWindowPos(GetConsoleWindow(), HWND_NOTOPMOST, 0, 0, LARGURA_MAX_JANELA, ALTURA_MAX_JANELA, SWP_SHOWWINDOW);
+    if (LARGURA_MAX_JANELA < 1150 || ALTURA_MAX_JANELA < 680)
+    {
+        SetWindowPos(GetConsoleWindow(), HWND_NOTOPMOST, ALTURA_MAX_JANELA/2, LARGURA_MAX_JANELA/2, ALTURA_MAX_CONSOLE, LARGURA_MAX_CONSOLE, SWP_SHOWWINDOW);
+        initscr();
+        noecho();
+        cbreak();
+        curs_set(0);
 
+        WINDOW * janela_fim = newwin(ALTURA_MAX_CONSOLE, LARGURA_MAX_CONSOLE, 0, 0);
+        box(janela_fim, 0, 0);        
+        mvwprintw(janela_fim, (ALTURA_MAX_CONSOLE/2)-1, (LARGURA_MAX_CONSOLE/2)-37, "A resolução do seu Monitor não suporta a visualização do programa =(");
+        refresh();
+        wrefresh(janela_fim);
+        getch();
+
+        delwin(janela_fim);
+        endwin();
+        return 1;
+    }
+    else SetWindowPos(GetConsoleWindow(), HWND_NOTOPMOST, 0, 0, LARGURA_MAX_JANELA, ALTURA_MAX_JANELA, SWP_SHOWWINDOW);
+
+//  CRIAÇÃO DO BANCO DE DADOS E DAS CONFIGURAÇÕES
+
+    char nome_empresa[51];
+    int total_itens;
+    
+    mkdir("Dados_Programa");
     FILE *configs = fopen("Dados_Programa\\configs.txt", "r");
 
-        if (configs == NULL)
-        {
-            mkdir("Dados_Programa");
-            configs = fopen("Dados_Programa\\configs.txt", "w");
+    sqlite3 *banco_dados;
+    sqlite3_open("Dados_Programa\\teste.db", &banco_dados);
+    const char criar_tabela[] = "CREATE TABLE IF NOT EXISTS produtos ( id INTEGER PRIMARY KEY AUTOINCREMENT, id_fabrica UNSIGNED BIG INT UNIQUE NOT NULL, nome VARCHAR(30), fabricante VARCHAR(14), unidade CHAR(2), quantidade TINYINT, valor_uni DECIMAL(5,2), subtotal DECIMAL(5,2) );";
+    sqlite3_exec(banco_dados, criar_tabela, sql_retorno, 0, &erro_sql);
 
-            initscr();
+    if (configs == NULL)
+    {
+        fclose(configs);
+        configs = fopen("Dados_Programa\\configs.txt", "w+");
+        
+        initscr();
+        
+            WINDOW * janela_nome_empresa = newwin(ALTURA_MAX_CONSOLE, LARGURA_MAX_CONSOLE, 0, 0);
+            WINDOW * inserir_nome_empresa = newwin(3, 52, ( ALTURA_MAX_CONSOLE - 1 ) / 2, ( LARGURA_MAX_CONSOLE - 52 ) / 2);
+            refresh();
+
+            box(janela_nome_empresa, 0, 0);
+            wborder(inserir_nome_empresa, 9553, 9553, 9552, 9552, 9556, 9559, 9562, 9565);
+
+            char buffer_empresa[51];
+
+                mvwprintw(janela_nome_empresa, ( ( ALTURA_MAX_CONSOLE - 1 ) / 2 ) - 3, ( ( LARGURA_MAX_CONSOLE - 52 ) / 2 ) + 7, "Por favor insira o nome da sua Empresa");
+                wrefresh(janela_nome_empresa);
+                wrefresh(inserir_nome_empresa);
+                
+                mvwgetstr(inserir_nome_empresa, 1, 1, buffer_empresa);
+                strcpy(nome_empresa, buffer_empresa);
+
+                sqlite3_exec(banco_dados, "SELECT COUNT(id) FROM produtos;", sql_retorno, 0, NULL);
+                total_itens = atoi(buffer_sql);
+                fprintf(configs, buffer_empresa);
+                fprintf(configs, ",%d",total_itens);
             
-                WINDOW * janela_nome_empresa = newwin(ALTURA_MAX_CONSOLE, LARGURA_MAX_CONSOLE, 0, 0);
-                WINDOW * inserir_nome_empresa = newwin(3, 52, ( ALTURA_MAX_CONSOLE - 1 ) / 2, ( LARGURA_MAX_CONSOLE - 52 ) / 2);
+            delwin(inserir_nome_empresa);
+            delwin(janela_nome_empresa);
 
-                box(janela_nome_empresa, 0, 0);
-                wborder(inserir_nome_empresa, 9553, 9553, 9552, 9552, 9556, 9559, 9562, 9565);
-
-                char *buffer = (char *)malloc(sizeof(char)*51);
-
-                    mvwprintw(janela_nome_empresa, ( ( ALTURA_MAX_CONSOLE - 1 ) / 2 ) - 3, ( ( LARGURA_MAX_CONSOLE - 52 ) / 2 ) + 7, "Por favor insira o nome da sua Empresa");
-                    refresh();
-                    wrefresh(janela_nome_empresa);
-                    wrefresh(inserir_nome_empresa);
-                    
-                    mvwgetstr(inserir_nome_empresa, 1, 1, buffer);
-                    strcpy(nome_empresa, buffer);
-
-                    fprintf(configs, buffer);
-                    fprintf(configs, ",\n");
-                
-                free(buffer);
-                
-                delwin(inserir_nome_empresa);
-                delwin(janela_nome_empresa);
-
-            endwin();
-
-        }
-        else fscanf(configs, "%50[^,]",nome_empresa);
-
+        endwin();
+    }
+    else fscanf(configs, "%50[^,],%d",nome_empresa,&total_itens);
+    
     fclose(configs);
-    menu(1, data);
+
+//  MENU PRINCIPAL
+
+    int rodar_programa = 1;
+    do {
+    time_t tempo_atual = time(NULL);
+    struct tm *data_atual = localtime(&tempo_atual);
+
+    initscr();
+    noecho();
+    cbreak();
+    curs_set(0);
+
+    const int opcaoMaiorY = ALTURA_MAX_CONSOLE;
+    const int opcaoMaiorX = LARGURA_MAX_CONSOLE/3;
+    const int opcaoMenorY = ALTURA_MAX_CONSOLE-16;
+    const int InfoX = LARGURA_MAX_CONSOLE-(opcaoMaiorX);
+    const int tabelaX = ((17*InfoX)/20);
+
+    WINDOW * caixa_opcoes_maior = newwin( opcaoMaiorY, opcaoMaiorX, 0, 0 );
+    WINDOW * caixa_opcoes_menor = newwin( opcaoMenorY, opcaoMaiorX, 10, 0 );
+    WINDOW * caixaInfo = newwin( opcaoMaiorY, InfoX, 0, opcaoMaiorX - 1 );
+    WINDOW * tabela_produtos = newwin( opcaoMenorY, tabelaX, 10, opcaoMaiorX + ((InfoX - tabelaX)/2));
+    refresh();
+
+        box(tabela_produtos, 0, 0);
+        box(caixa_opcoes_maior, 0, 0);
+        wborder(caixaInfo, 0, 0, 0, 0, 9516, 0, 9524, 0);
+        wborder(caixa_opcoes_menor, 0, 0, 0, 0, 9500, 9508, 9500, 9508);
+
+        mvwprintw(caixa_opcoes_maior, 4, ( opcaoMaiorX - 21 ) / 2,
+        "CONTROLE DE ESTOQUE");
+
+        mvwprintw(caixa_opcoes_maior, 6, ( opcaoMaiorX - 4 ) / 2, 
+        "%.1f", VERSAO_PROGRAMA);
+
+        mvwprintw(caixa_opcoes_maior, ( opcaoMaiorY - 4 ), ( opcaoMaiorX - 30 ) / 2, 
+        "[  DATA: %2d  /  %2d  /  %4d  ]",
+        data_atual->tm_mday, data_atual->tm_mon+1, data_atual->tm_year+1900);
+
+        mvwprintw(caixaInfo, 5, ( InfoX - strlen(nome_empresa) ) / 2, 
+        "%s", nome_empresa);
+
+        mvwprintw(tabela_produtos, 2, 0, "├");
+        for (int i = 1; i < getmaxx(tabela_produtos)-1; i++)
+            mvwprintw(tabela_produtos, 2, i, "─");
+        mvwprintw(tabela_produtos, 2, getmaxx(tabela_produtos)-1, "┤");
+
+        if (tabelaX >= 104)
+        {
+            produto P;
+            mvwprintw(tabela_produtos, 1, 1+(tabelaX - 104)/2, " ID │   COD INTERNO   │              NOME              │   FABRICANTE   │ UN │ QNTD │ VALOR UN │ SUBTOTAL "); 
+            for (int i = 1; i <= total_itens; i++)
+            {
+                select_id(banco_dados, i, &P);
+                mvwprintw(tabela_produtos, 2+i, 1+(tabelaX - 104)/2," %2hu │ %15llu │ %30s │ %14s │ %2s │ %4hu │ %8.2f │ %8.2f ",
+                P.id,P.id_fabrica,P.nome,P.fabricante,P.unidade,P.quantidade,P.valor_uni,P.subtotal);
+            }
+            for (int i = total_itens+3; i < opcaoMenorY-1; i++)
+                mvwprintw(tabela_produtos, i,1+(tabelaX - 104)/2, "    │                 │                                │                │    │      │          │          ",i);
+        } 
+        else if (tabelaX < 104)
+        {
+            produto P;
+            mvwprintw(tabela_produtos, 1, 1+(tabelaX - 83)/2, " ID │           NOME              │   FABRICANTE   │ QNTD │ VALOR UN │ SUBTOTAL "); 
+            for (int i = 1; i <= total_itens; i++)
+            {
+                select_id(banco_dados, i, &P);
+                mvwprintw(tabela_produtos, 2+i, 1+(tabelaX - 83)/2," %2hu │ %27s │ %14s │ %4hu │ %8.2f │ %8.2f ",
+                P.id,P.nome,P.fabricante,P.quantidade,P.valor_uni,P.subtotal);
+            }
+            for (int i = total_itens+3; i < opcaoMenorY-1; i++)
+                mvwprintw(tabela_produtos, i, 1+(tabelaX - 83)/2, "    │                             │                │      │          │          "); 
+        }
+
+    wrefresh(caixa_opcoes_maior);
+    wrefresh(caixaInfo);
+    wrefresh(caixa_opcoes_menor);
+    wrefresh(tabela_produtos);
+
+//  OPÇÕES DO MENU PRINCIPAL
+
+    int opcao_selecionada = 0, tecla_pressionada;
+
+    opcao opc_principal[] = {
+        {1, "Adicionar Produto"},
+        {2, "Editar Produto"},
+        {3, "Remover Produto"},
+        {4, "Mostrar todos os Produtos"},
+        {5, "Mostrar com Filtros"},
+        {6, "Sair"}
+    };
+    const int qntd_opcoes = (int)(sizeof(opc_principal)/sizeof(opcao));
+
+    wrefresh(caixaInfo);
+    keypad(caixa_opcoes_menor, true);
+    do
+    {
+        for (int i = 0; i < qntd_opcoes; i++)
+        {
+            if (i == opcao_selecionada) wattron(caixa_opcoes_menor, A_STANDOUT);
+            mvwprintw( caixa_opcoes_menor, (getmaxy(caixa_opcoes_menor) / 7 ) + ( i*2 ), getmaxx(caixa_opcoes_menor) / 6, "%s", opc_principal[i].titulo );
+            wattroff(caixa_opcoes_menor, A_STANDOUT);
+        }
+
+        tecla_pressionada = wgetch(caixa_opcoes_menor);
+
+        switch(tecla_pressionada)
+        {
+            case KEY_UP:
+                opcao_selecionada--;
+                if (opcao_selecionada < 0) opcao_selecionada = qntd_opcoes-1;
+                break;
+            case KEY_DOWN:
+                opcao_selecionada++;
+                if (opcao_selecionada > qntd_opcoes-1) opcao_selecionada = 0;
+                break;
+        }
+    } while (tecla_pressionada != 10);
+
+    delwin(caixa_opcoes_maior);
+    delwin(caixa_opcoes_menor);
+    delwin(caixaInfo);
+    delwin(tabela_produtos);
+    endwin();
+
+    if (opcao_selecionada == qntd_opcoes-1)
+        rodar_programa = 0;
+    else if (opcao_selecionada < qntd_opcoes)
+        menu(opcao_selecionada+1);
+
+    } while (rodar_programa);
+
+    sqlite3_close(banco_dados);
 	return 0;
-}  
+} 
 
-void menu(int x, struct tm *y)
+int menu(int opc)
 {
-
-    switch (x)
+    switch(opc)
     {
         case 1:
-        {
             initscr();
+            WINDOW * janela_teste = newwin(ALTURA_MAX_CONSOLE, LARGURA_MAX_CONSOLE, 0, 0);
+            refresh();
+            box(janela_teste, 0, 0);
+            wmove(janela_teste, ALTURA_MAX_CONSOLE/6, LARGURA_MAX_CONSOLE/8);
+            wprintw(janela_teste, "Insira um nome: ");
+            mvwprintw(janela_teste, getcury(janela_teste)+2, LARGURA_MAX_CONSOLE/8, "Inseria um fabricante: ");
+            mvwprintw(janela_teste, getcury(janela_teste)+2, LARGURA_MAX_CONSOLE/8, "Inseria um id: ");
+            wrefresh(janela_teste);
+            
+            getch();
+            endwin();
 
-            noecho();
-            cbreak();
-            curs_set(0);
-
-                const int opcaoMaiorY = ALTURA_MAX_CONSOLE;
-                const int opcaoMaiorX = LARGURA_MAX_CONSOLE/3;
-
-                const int opcaoMenorY = ALTURA_MAX_CONSOLE-16;
-
-                const int InfoX = LARGURA_MAX_CONSOLE-(opcaoMaiorX);
-
-                WINDOW * caixa_opcoes_maior = newwin( opcaoMaiorY, opcaoMaiorX, 0, 0 );
-                WINDOW * caixa_opcoes_menor = newwin( opcaoMenorY, opcaoMaiorX, 10, 0 );
-                WINDOW * caixaInfo = newwin( opcaoMaiorY, InfoX, 0, opcaoMaiorX - 1 );
-
-                box(caixa_opcoes_maior, 0, 0);
-                wborder(caixaInfo, 0, 0, 0, 0, 9516, 0, 9524, 0);
-                wborder(caixa_opcoes_menor, 0, 0, 0, 0, 9500, 9508, 9500, 9508);
-
-                    mvwprintw(caixa_opcoes_maior, 4, ( opcaoMaiorX - 21 ) / 2,
-                        "CONTROLE DE ESTOQUE");
-
-                    mvwprintw(caixa_opcoes_maior, 6, ( opcaoMaiorX - 4 ) / 2, 
-                        "%.1f", VERSAO_PROGRAMA);
-
-                    mvwprintw(caixa_opcoes_maior, ( opcaoMaiorY - 4 ), ( opcaoMaiorX - 30 ) / 2, 
-                        "[  DATA: %2d  /  %2d  /  %4d  ]",
-                        y->tm_mday, y->tm_mon+1, y->tm_year+1900);
-
-                    mvwprintw(caixaInfo, 4, ( InfoX - strlen(nome_empresa) ) / 2, 
-                        "%s", nome_empresa);
-
-                    refresh();
-                    wrefresh(caixa_opcoes_maior);
-                    wrefresh(caixa_opcoes_menor);
-                    wrefresh(caixaInfo);
-
-                        char menu_principal_opcoes[6][30] =
-                        {
-                            {"Adicionar Produto"},
-                            {"Editar Produto"},
-                            {"Remover Produto"},
-                            {"Mostrar todos os Produtos"},
-                            {"Mostrar com Filtros"},
-                            {"Sair"}
-                        };
-
-                        keypad(caixa_opcoes_menor, true);
-
-                        int opcao_selecionada = 0, tecla_pressionada;
-
-                        while (tecla_pressionada != 10)
-                        {
-
-                            for (int i = 0; i < 6; i++)
-                            {
-                                if (i == opcao_selecionada) wattron(caixa_opcoes_menor, A_STANDOUT);
-                                mvwprintw( caixa_opcoes_menor, (getmaxy(caixa_opcoes_menor) / 7 ) + ( i*2 ), getmaxx(caixa_opcoes_menor) / 6, "%s", menu_principal_opcoes[i] );
-                                wattroff(caixa_opcoes_menor, A_STANDOUT);  
-                            }
-
-                            tecla_pressionada = wgetch(caixa_opcoes_menor);
-
-                            switch (tecla_pressionada)
-                            {
-                                case KEY_DOWN:
-                                    opcao_selecionada++;
-                                    if (opcao_selecionada > 5) opcao_selecionada = 0;
-                                    break;
-                                case KEY_UP:
-                                    opcao_selecionada--;
-                                    if (opcao_selecionada < 0) opcao_selecionada = 5;
-                                    break;
-                            }
-
-                        }
-                delwin(caixa_opcoes_maior);
-                delwin(caixa_opcoes_menor);
-                delwin(caixaInfo);
-
-            endwin(); 
-        break;
-        }
-        case 2:
-        {
             break;
-        }
+            return 1;
+        case 2:
+            break;
+            return 1;
+        case 3:
+            break;
+            return 1;
+        case 4:
+            break;
+            return 1;
+        case 5:
+            break;
+            return 1;
+        default:
+            break;
+            return 0;
     }
+}
+
+int sql_retorno(void *Inutilizado, int argc, char **argv, char **coluna)
+{
+    for (int i = 0; i < argc; i++)
+    {
+        strcat(buffer_sql, argv[i]);
+        if (i != argc-1) strcat(buffer_sql, ",");
+    }
+    return 1;
+}
+
+int select_id(sqlite3 *BD, int id, produto *P)
+{
+    char buffer[50];
+    sprintf(buffer, "SELECT * FROM produtos WHERE id = %d", id); 
+
+    sqlite3_exec(BD, buffer, sql_retorno, 0, &erro_sql);
+
+    sscanf(buffer_sql, "%hu,%llu,%30[^,],%14[^,],%2[^,],%hu,%f,%f", 
+    &P->id, &P->id_fabrica, P->nome, P->fabricante, P->unidade, &P->quantidade, &P->valor_uni, &P->subtotal);
+
+    return 1;
+}
+
+int adicionar_produto(sqlite3 *BD, produto P)
+{
+    char buffer[200];
+
+    sprintf(buffer, "SELECT INTO produtos (id_fabrica,nome,fabricante,unidade,quantidade,valor_uni,subtotal) VALUES (%llu,'%s','%s','%s',%hu,%.2f,%.2f);",
+    P.id_fabrica, P.nome, P.fabricante, P.unidade, P.quantidade, P.valor_uni, P.subtotal);
+
+    sqlite3_exec(BD, buffer, sql_retorno, 0, &erro_sql);
+
+    return 1;
 }
