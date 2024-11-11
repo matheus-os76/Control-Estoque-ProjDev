@@ -4,7 +4,7 @@ Projeto de segundo semestre da faculdade destinado a ajudar *pequenas e locais e
 
 ## Lista de Funções
 
-- [] CRUD 📑
-- [] Alerta de Datas de Vencimento 📆
-- [] Alerta de Quantia Nula 0️⃣
-- [] Temas 🎨
+- [ ] CRUD 📑
+- [ ] Alerta de Datas de Vencimento 📆
+- [ ] Alerta de Quantia Nula 0️⃣
+- [ ] Temas 🎨
