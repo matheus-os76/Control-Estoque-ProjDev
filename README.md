@@ -8,3 +8,10 @@ Projeto de segundo semestre da faculdade destinado a ajudar *pequenas e locais e
 - [ ] Alerta de Datas de Vencimento 📆
 - [ ] Alerta de Quantia Nula 0️⃣
 - [ ] Temas 🎨
+
+## Compatibilidade
+
+- **Windows 10**: Funciona ✔️
+- **Windows 7/8/XP**: Provavelmente funciona⚠️
+- **Linux**: Não funciona 🔴
+- **MasOS**: Não testado ❔
