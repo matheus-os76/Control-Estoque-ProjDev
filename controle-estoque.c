@@ -39,6 +39,9 @@
     int total_itens = 0;
     int maior_id = 0;
 
+void colocar_em_maiusculo(char *str);
+void virgula_pra_ponto(char *str);
+
 int atualizar_total_itens();
 int atualizar_maior_id();
 int menu(int opc);
@@ -47,6 +50,7 @@ int sql_retorno(void *Inutilizado, int argc, char **argv, char **coluna);
 int select_id(produto *P, int id);
 int adicionar_produto(produto P);
 int remover_produto(int id_inicial, int id_final);
+int editar_produto(int id_editar, produto P);
 
 int main()
 {
@@ -370,23 +374,17 @@ int menu(int opc)
 
                 mvwprintw(ler_add_produto, getcury(ler_add_produto)+1, 2, "Nome do Produto: ");
                     wgetnstr(ler_add_produto, buffer_produto, 50);
-                    for (int i = 0; i < 51; i++)
-                        if (islower(buffer_produto[i]))
-                            buffer_produto[i] = toupper(buffer_produto[i]);
+                    colocar_em_maiusculo(buffer_produto);
                     strcpy(P.nome, buffer_produto);
 
                 mvwprintw(ler_add_produto, getcury(ler_add_produto)+1, 2, "Fabricante: ");
                     wgetnstr(ler_add_produto, buffer_produto, 14);
-                    for (int i = 0; i < 15; i++)
-                        if (islower(buffer_produto[i]))
-                            buffer_produto[i] = toupper(buffer_produto[i]);
+                    colocar_em_maiusculo(buffer_produto);
                     strcpy(P.fabricante, buffer_produto);
 
                 mvwprintw(ler_add_produto, getcury(ler_add_produto)+1, 2, "Unidade: ");
                     wgetnstr(ler_add_produto, buffer_produto, 2); 
-                    for (int i = 0; i < 15; i++)
-                        if (islower(buffer_produto[i]))
-                            buffer_produto[i] = toupper(buffer_produto[i]);
+                    colocar_em_maiusculo(buffer_produto);
                     strcpy(P.unidade, buffer_produto);       
 
                 mvwprintw(ler_add_produto, getcury(ler_add_produto)+1, 2, "Quantidade: ");
@@ -395,25 +393,13 @@ int menu(int opc)
 
                 mvwprintw(ler_add_produto, getcury(ler_add_produto)+1, 2, "Valor Unitário: ");
                     wgetnstr(ler_add_produto, buffer_produto, 8);
-                    for (int i = 0; i < 8; i++)
-                    {
-                        if (ispunct(buffer_produto[i]))
-                        {
-                            buffer_produto[i] = '.';
-                        }
-                    }
+                    virgula_pra_ponto(buffer_produto);
                     P.valor_uni = strtof(buffer_produto, NULL);
 
                 mvwprintw(ler_add_produto, getcury(ler_add_produto)+1, 2, "Subtotal: ");
                 wrefresh(ler_add_produto);
                     wgetnstr(ler_add_produto, buffer_produto, 8);
-                    for (int i = 0; i < 8; i++)
-                    {
-                        if (ispunct(buffer_produto[i]))
-                        {
-                            buffer_produto[i] = '.';
-                        }
-                    }
+                    virgula_pra_ponto(buffer_produto);
 
                 if (strtof(buffer_produto, NULL) != P.quantidade*P.valor_uni)
                     P.subtotal = P.quantidade*P.valor_uni;
@@ -475,12 +461,155 @@ int menu(int opc)
         case 2:
         {
             initscr();
+            echo();
+            curs_set(1);
+            const int janela_idX = (25*LARGURA_MAX_CONSOLE)/100;
+            const int janela_idY = (50*ALTURA_MAX_CONSOLE)/100;
+            const int metadeX = LARGURA_MAX_CONSOLE/2;
+            const int metadeY = ALTURA_MAX_CONSOLE/2;
+            const int tituloY = ((ALTURA_MAX_CONSOLE-2)/6)-2;
 
-            WINDOW * janela_teste = newwin(20, 20, 0, 0);
+            WINDOW * janela_externa = newwin(ALTURA_MAX_CONSOLE, LARGURA_MAX_CONSOLE, 0, 0);
+            WINDOW * janela_id = newwin(janela_idY, janela_idX, metadeY-(janela_idY/2), metadeX-(janela_idX/2));
+            WINDOW * janela_ler_id = newwin(janela_idY-2, janela_idX-2, metadeY-(janela_idY/2)+1, metadeX-(janela_idX/2)+1);
+
+            refresh();
+            box(janela_externa, 0, 0);
+            box(janela_id, 0, 0);
+            wrefresh(janela_externa);
+            wrefresh(janela_id);
+
+            mvwprintw(janela_ler_id, (janela_idY-1)/6, (janela_idX/2)-7, "EDITAR PRODUTO");
+            mvwprintw(janela_ler_id, (janela_idY-1)/3, ((janela_idX-1)/2)-20, "Insira o ID do produto que deseja editar");
+            wrefresh(janela_ler_id);
+
+            char buffer_id[10];
+
+            mvwgetnstr(janela_ler_id, getcury(janela_ler_id)+2, ((janela_idX-1)/2)-1, buffer_id, 9);
+
+            int id_editar = atoi(buffer_id);
+            produto *produto_editar = calloc(1, sizeof(produto));
+
+            if (!id_editar || !(select_id(produto_editar, id_editar)))
+            {
+                free(produto_editar);
+                mvwprintw(janela_ler_id, getcury(janela_ler_id)+2, ((janela_idX-1)/2)-6, "ID Inválido!");
+                mvwprintw(janela_ler_id, getcury(janela_ler_id)+1, ((janela_idX-1)/2)-16, "Por favor digite um ID já usado!");
+                wrefresh(janela_ler_id);
+                wgetch(janela_ler_id);
+                return 0;
+            }
+            free(produto_editar);
+            int tamanho_num = strlen(buffer_id);
+
+            delwin(janela_externa);
+            delwin(janela_id);
+            delwin(janela_ler_id);
+            clear();
             refresh();
 
-            box(janela_teste, 0, 0);
-            wrefresh(janela_teste);
+            WINDOW * janela_esquerda = newwin(ALTURA_MAX_CONSOLE, metadeX, 0, 0);
+            WINDOW * janela_direita = newwin(ALTURA_MAX_CONSOLE, metadeX, 0, metadeX-1);
+            WINDOW * inserir_novas_infos = newwin(ALTURA_MAX_CONSOLE-2-tituloY, metadeX-2, tituloY, 1);
+            WINDOW * titulo = newwin(tituloY, metadeX, 0, 0);
+            WINDOW * titulo_id_original = newwin(tituloY, metadeX, 0, metadeX-1);
+            refresh();
+
+            box(janela_esquerda, 0, 0);
+            wborder(janela_direita, 0, 0, 0, 0, 9516, 0, 9524, 0);
+            wborder(titulo, 0, 0, 0, 0, 9516, 0, 9524, 0);
+            wborder(titulo_id_original, 0, 0, 0, 0, 9516, 0, 9524, 0);
+
+            produto X; 
+            produto Y;
+            char buffer_editar[60];
+            select_id(&X, id_editar);
+            const int id_original_posX = metadeX/5;
+
+            mvwprintw(titulo, (tituloY/2)-1, (metadeX/2)-8, "EDITAR  PRODUTOS");
+            mvwprintw(titulo_id_original, (tituloY/2)-1, (metadeX/2)-6, "ID  ORIGINAL");
+            mvwprintw(janela_direita, (ALTURA_MAX_CONSOLE-2)/6, (metadeX/2)-4-tamanho_num, "ID: %d", id_editar);
+            mvwprintw(janela_direita, getcury(janela_direita)+3, id_original_posX, "ID Fabricante: %s", X.id_fabrica);
+            mvwprintw(janela_direita, getcury(janela_direita)+3, id_original_posX, "Nome do Produto: %s", X.nome);
+            mvwprintw(janela_direita, getcury(janela_direita)+3, id_original_posX, "Fabricante: %s", X.fabricante);
+            mvwprintw(janela_direita, getcury(janela_direita)+3, id_original_posX, "Unidade: %s", X.unidade);
+            mvwprintw(janela_direita, getcury(janela_direita)+3, id_original_posX, "Quantidade: %d", X.quantidade);
+            mvwprintw(janela_direita, getcury(janela_direita)+3, id_original_posX, "Valor Unitário: %.2f", X.valor_uni);
+            mvwprintw(janela_direita, getcury(janela_direita)+3, id_original_posX, "Subtotal: %.2f", X.subtotal);
+
+            wrefresh(janela_direita);
+            wrefresh(janela_esquerda);
+            wrefresh(titulo);
+            wrefresh(titulo_id_original);
+            
+            mvwprintw(inserir_novas_infos, 5, getbegx(inserir_novas_infos)+2, "ID Fabricante: ");
+                wgetnstr(inserir_novas_infos, buffer_editar, 15);
+                colocar_em_maiusculo(buffer_editar);
+                strcpy(Y.id_fabrica, buffer_editar);
+            
+            mvwprintw(inserir_novas_infos, getcury(inserir_novas_infos)+2, getbegx(inserir_novas_infos)+2, "Nome: ");
+                wgetnstr(inserir_novas_infos, buffer_editar, 50);
+                colocar_em_maiusculo(buffer_editar);
+                strcpy(Y.nome, buffer_editar);
+
+            mvwprintw(inserir_novas_infos, getcury(inserir_novas_infos)+2, getbegx(inserir_novas_infos)+2, "Fabricante: ");
+                wgetnstr(inserir_novas_infos, buffer_editar, 14);
+                colocar_em_maiusculo(buffer_editar);
+                strcpy(Y.fabricante, buffer_editar);
+
+            mvwprintw(inserir_novas_infos, getcury(inserir_novas_infos)+2, getbegx(inserir_novas_infos)+2, "Unidade: ");
+                wgetnstr(inserir_novas_infos, buffer_editar, 2);
+
+                if (atoi(buffer_editar)) strcpy(Y.unidade, "UN");
+                else if (atoi(buffer_editar) % 6 == 0) strcpy(Y.unidade, "DZ");
+                else if (atoi(buffer_editar) > 10) strcpy(Y.unidade, "PC");
+                else 
+                {
+                    colocar_em_maiusculo(buffer_editar);
+                    strcpy(Y.unidade, buffer_editar);
+                }
+
+            buffer_editar[0] = '\0';
+            mvwprintw(inserir_novas_infos, getcury(inserir_novas_infos)+2, getbegx(inserir_novas_infos)+2, "Quantidade: ");
+                wgetnstr(inserir_novas_infos, buffer_editar, 3);
+                Y.quantidade = atoi(buffer_editar);
+
+            mvwprintw(inserir_novas_infos, getcury(inserir_novas_infos)+2, getbegx(inserir_novas_infos)+2, "Valor Unitário: ");
+                wgetnstr(inserir_novas_infos, buffer_editar, 5);
+                virgula_pra_ponto(buffer_editar);
+                Y.valor_uni = atof(buffer_editar);
+
+            mvwprintw(inserir_novas_infos, getcury(inserir_novas_infos)+2, getbegx(inserir_novas_infos)+2, "Subtotal: ");
+                wgetnstr(inserir_novas_infos, buffer_editar, 5);
+                virgula_pra_ponto(buffer_editar);
+                Y.subtotal = atof(buffer_editar);
+
+            if (Y.subtotal != Y.quantidade*Y.valor_uni || Y.subtotal == 0)
+                Y.subtotal = Y.quantidade*Y.valor_uni;
+
+            mvwprintw(inserir_novas_infos, getcury(inserir_novas_infos)+2, getbegx(inserir_novas_infos)+2, "%s - %s - %s - %s - %d - %f - %f", 
+            Y.id_fabrica, Y.nome, Y.fabricante, Y.unidade, Y.quantidade, Y.valor_uni, Y.subtotal);
+
+            if (Y.id_fabrica[0] == '\0' || Y.nome[0] == '\0' || Y.fabricante[0] == '\0' || Y.unidade[0] == '\0')
+            {
+                mvwprintw(inserir_novas_infos, getcury(inserir_novas_infos)+2, getbegx(inserir_novas_infos)+2, 
+                "Alguma informação passada é inválida, por favor tente novamente");
+                wgetch(inserir_novas_infos);
+                return 0;
+            }
+            else
+            {
+                mvwprintw(inserir_novas_infos, getcury(inserir_novas_infos)+2, (metadeX/2)-22, "Você tem certeza que quer editar o Produto %d?",id_editar);
+                mvwprintw(inserir_novas_infos, getcury(inserir_novas_infos)+1, (metadeX/2)-10, "[S] - Sim   [N] - Não");
+                char resposta = mvwgetch(inserir_novas_infos, getcury(inserir_novas_infos)+1, (metadeX/2)-1);
+
+                if (tolower(resposta) == 's') editar_produto(id_editar, Y);
+                else return 0;
+            }
+
+            wrefresh(inserir_novas_infos);
+            wrefresh(titulo);
+
             getch();
 
             endwin();
@@ -687,6 +816,22 @@ int sql_retorno(void *Inutilizado, int argc, char **argv, char **coluna)
     return 0;
 }
 
+void colocar_em_maiusculo(char *str)
+{
+    int tamanho_str = strlen(str);
+
+    for (int i = 0; i < tamanho_str; i++)
+        if (islower(str[i])) str[i] = toupper(str[i]);
+}
+
+void virgula_pra_ponto(char *str)
+{
+    int tamanho_str = strlen(str);
+
+    for (int i = 0; i < tamanho_str; i++)
+        if (str[i] == ',') str[i] = '.';
+}
+
 int atualizar_total_itens()
 {
     char *comando_count = "SELECT COUNT(id) FROM produtos;";
@@ -847,12 +992,75 @@ int remover_produto(int id_inicial, int id_final)
     retorno_delete = sqlite3_step( handler_sql );
 
     if (retorno_delete == SQLITE_DONE)
-    {
         return 1;
-    } 
     else 
-    {
         return 0;
-    }
+
     
+}
+
+int editar_produto(int id_editar, produto P)
+{
+    char *comando_update = "UPDATE produtos SET "
+                           "id_fabrica = @id_fabrica,"
+                           "nome = @nome,"
+                           "fabricante = @fabricante,"
+                           "unidade = @unidade,"
+                           "quantidade = @quantidade,"
+                           "valor_uni = @valor_uni,"
+                           "subtotal = @subtotal "
+                           "WHERE id = @id_editar;";
+
+    int retorno_update = sqlite3_prepare_v2( banco_dados, comando_update, -1, &handler_sql, 0 );
+
+    if (retorno_update != SQLITE_OK)
+        return 0;
+    
+    const int pos_id_fabricante = sqlite3_bind_parameter_index( handler_sql, "@id_fabrica");
+    const int pos_nome = sqlite3_bind_parameter_index( handler_sql, "@nome");
+    const int pos_fabricante = sqlite3_bind_parameter_index( handler_sql, "@fabricante");
+    const int pos_unidade = sqlite3_bind_parameter_index( handler_sql, "@unidade");
+    const int pos_quantidade = sqlite3_bind_parameter_index( handler_sql, "@quantidade");
+    const int pos_valor_uni = sqlite3_bind_parameter_index( handler_sql, "@valor_uni");
+    const int pos_subtotal = sqlite3_bind_parameter_index( handler_sql, "@subtotal");
+    const int pos_id_editar = sqlite3_bind_parameter_index( handler_sql, "@id_editar");
+
+    retorno_update = sqlite3_bind_text(handler_sql, pos_id_fabricante, P.id_fabrica, -1, NULL);
+        if (retorno_update != SQLITE_OK)
+            return -1;
+
+    retorno_update = sqlite3_bind_text(handler_sql, pos_nome, P.nome, -1, NULL);
+        if (retorno_update != SQLITE_OK)
+            return -2;
+
+    retorno_update = sqlite3_bind_text(handler_sql, pos_fabricante, P.fabricante, -1, NULL);
+        if (retorno_update != SQLITE_OK)
+            return -3;
+    
+    retorno_update = sqlite3_bind_text(handler_sql, pos_unidade, P.unidade, -1, NULL);
+        if (retorno_update != SQLITE_OK)
+            return -4;
+    
+    retorno_update = sqlite3_bind_int( handler_sql, pos_quantidade, P.quantidade );
+        if (retorno_update != SQLITE_OK)
+            return -5;
+    
+    retorno_update = sqlite3_bind_double( handler_sql, pos_valor_uni, P.valor_uni );
+        if (retorno_update != SQLITE_OK)
+            return -6;
+
+    retorno_update = sqlite3_bind_double( handler_sql, pos_subtotal, P.subtotal );
+        if (retorno_update != SQLITE_OK)
+            return -7;
+
+    retorno_update = sqlite3_bind_int( handler_sql, pos_id_editar, id_editar );
+        if (retorno_update != SQLITE_OK)
+            return -8;
+
+    retorno_update = sqlite3_step( handler_sql );
+
+    if (retorno_update == SQLITE_DONE)
+        return 1;
+    else 
+        return -9;
 }
