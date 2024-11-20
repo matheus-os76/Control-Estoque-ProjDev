@@ -41,6 +41,7 @@
 
 void colocar_em_maiusculo(char *str);
 void virgula_pra_ponto(char *str);
+int quantidade_digitos(int num);
 
 int atualizar_total_itens();
 int atualizar_maior_id();
@@ -144,6 +145,29 @@ sprintf(caminho_banco, "%s\\%s.db", nome_pasta, nome_banco);
     
     fclose(configs);
 
+    FILE *produtos = fopen("dados_estoque\\produtos.csv", "r");
+
+    if (produtos != NULL)
+    {
+        char buffer_csv[255];
+        while (fgets(buffer_csv, 254, produtos))
+        {
+            produto C;
+            sscanf(buffer_csv,"%15[^,],%50[^,],%14[^,],%2[^,],%d,%f,%f",
+            C.id_fabrica,C.nome,C.fabricante,C.unidade,&C.quantidade,&C.valor_uni,&C.subtotal);
+
+            if (!(C.id_fabrica[0] == '\0' || C.nome[0] == '\0' || C.fabricante[0] == '\0' || C.unidade[0] == '\0' || C.valor_uni <= 0)) 
+            {
+                adicionar_produto(C);
+                total_itens++;
+                atualizar_maior_id();
+                remove("dados_estoque\\produtos.csv");
+            }
+            
+        }
+    }
+    fclose(produtos);
+
 //  MENU PRINCIPAL
 
     int rodar_programa = 1;
@@ -199,7 +223,7 @@ sprintf(caminho_banco, "%s\\%s.db", nome_pasta, nome_banco);
 
         if (total_itens > 0)
         {
-            int ids_usados[total_itens], j = 0;
+            int ids_usados[opcaoMenorY-4], j = 0;
             produto P;
 
             for (int i = 1; i <= maior_id; i++)
@@ -211,7 +235,7 @@ sprintf(caminho_banco, "%s\\%s.db", nome_pasta, nome_banco);
                     ids_usados[j] = P.id;
                     j++;
                 }
-                if (j == total_itens) break;
+                if (j == (opcaoMenorY-4)) break;
             }
             if (tabelaX >= 124)
             {         
@@ -406,7 +430,7 @@ int menu(int opc)
                 else
                     P.subtotal = strtof(buffer_produto, NULL);
                 
-                if (P.id_fabrica == NULL || P.nome == NULL || P.fabricante == NULL || P.quantidade == 0 || P.unidade == NULL || P.valor_uni == 0 || P.subtotal == 0)
+                if (P.id_fabrica[0] == '\0' || P.nome[0] == '\0' || P.fabricante[0] == '\0' || P.unidade[0] == '\0' || P.valor_uni == 0)
                 {
                     mvwprintw(janela_add_produto, getcury(ler_add_produto)+9, 2, "Alguma informação passada do produto está errada");
                     mvwprintw(janela_add_produto, getcury(ler_add_produto)+10, 2, "Por favor tente novamente");
@@ -794,14 +818,136 @@ int menu(int opc)
             return 1;
         }
         case 4:
+        {
+            initscr();
+            noecho();
+            cbreak();
+            curs_set(0);
+
+            const int tabelaX = 145;
+            const int tabelaY = 4*ALTURA_MAX_CONSOLE/5;
+            const int tabela_posX = (LARGURA_MAX_CONSOLE-tabelaX)/2;
+            const int tabela_posY = (ALTURA_MAX_CONSOLE-tabelaY)/2;
+            
+            const int produtos_por_pagina = tabelaY-4;
+            int total_paginas = total_itens/produtos_por_pagina;
+            int pagina_atual = 0;
+
+            // if (total_itens % produtos_por_pagina != 0) total_paginas++;
+
+            int tecla_pressionada;
+            const int posX_seta_direita = tabelaX+((41*LARGURA_MAX_CONSOLE)/237);
+            const int posX_seta_esquerda = tabela_posX+1;
+            const int posY_barra = tabelaY+6;
+            const int digitos_paginas = quantidade_digitos(total_itens)+1;
+
+            do {
+
+            WINDOW * janela_externa = newwin(ALTURA_MAX_CONSOLE, LARGURA_MAX_CONSOLE, 0, 0);
+            WINDOW * tabela_produtos = newwin(tabelaY, tabelaX, tabela_posY, tabela_posX);
+            keypad(janela_externa, TRUE);
+            refresh();
+
+            box(janela_externa, 0, 0);
+            wborder(tabela_produtos, 9553, 9553, 9552, 9552, 9556, 9559, 9562, 9565);
+
+            mvwprintw(janela_externa, tabela_posY-3, (LARGURA_MAX_CONSOLE-18)/2, "TABELA DE PRODUTOS");
+            mvwprintw(tabela_produtos, 2, 0, "╠");
+            for (int i = 1; i < tabelaX-1; i++)
+                mvwprintw(tabela_produtos, 2, i, "═");
+            mvwprintw(tabela_produtos, 2, tabelaX-1, "╣");     
+            mvwprintw(tabela_produtos, 1, 1, 
+            " ID ┃ CÓDIGO  FABRICA ┃                        NOME                        ┃   FABRICANTE   ┃ UNIDADE ┃ QUANTIDADE ┃ VALOR UNITÁRIO ┃ SUBTOTAL ");
+            
+            start_color();
+            
+            // if (maior_id > 0)
+            // {
+            //     int j = 0;
+            //     produto P; 
+            //     int ids[total_itens];
+
+            //     for (int i = 1; i <= maior_id; i++)
+            //     {
+            //         if (select_id(&P, i)) ids[j] = P.id;
+            //         j++;
+            //     }
+
+            //     for (int i = 1*pagina_atual; i <= j*pagina_atual; i++)
+            //     {
+            //         select_id(&P, ids[i-1]);
+                    // mvwprintw(tabela_produtos, 3+j, 1," %2d ┃ %15s ┃ %50s ┃ %14s ┃ %7s ┃ %10d ┃ %11.2f ┃ %5.2f ", 
+                    // i, P.id_fabrica, P.nome, P.fabricante, P.unidade, P.quantidade, P.valor_uni, P.subtotal);
+            //         // mvwprintw(tabela_produtos, 3+j, 1,"    ┃                ┃                                                    ┃                ┃         ┃            ┃                ┃          ");
+                    
+            //     }
+
+
+            // }
+
+            if (total_itens > 0)
+            {
+                int ids_usados[tabelaY-4], j = 0;
+                produto P;
+
+                for (int i = 1+(pagina_atual*(tabelaY-4)); i <= maior_id; i++)
+                {
+                    int retorno_select = select_id(&P, i);
+            
+                    if (retorno_select)
+                    {
+                        ids_usados[j] = P.id;
+                        j++;
+                    }
+                    if (j == tabelaY-4) break;
+                }
+
+                for (int i = 0; i < j; i++)
+                {         
+                    select_id(&P, ids_usados[i]);                  
+                    mvwprintw(tabela_produtos, 3+i, 1," %2d ┃ %15s ┃ %50s ┃ %14s ┃ %7s ┃ %10d ┃ %14.2f ┃ %5.2f ", 
+                    P.id, P.id_fabrica, P.nome, P.fabricante, P.unidade, P.quantidade, P.valor_uni, P.subtotal); 
+                }
+                    
+                for (int i = getcury(tabela_produtos)+1; i < tabelaY-1; i++)
+                    mvwprintw(tabela_produtos, i, 1, "    ┃                 ┃                                                    ┃                ┃         ┃            ┃                ┃          ");
+                
+            }
+
+            mvwprintw(janela_externa, posY_barra, posX_seta_esquerda, " <- ");
+            mvwprintw(janela_externa, posY_barra, posX_seta_direita, " -> ");
+            mvwprintw(janela_externa, posY_barra, (LARGURA_MAX_CONSOLE-(20+(2*digitos_paginas)))/2, "┃ PÁGINA %0*d   /   %0*d ┃",
+            digitos_paginas, pagina_atual+1, digitos_paginas, total_paginas);
+            mvwchgat(janela_externa, posY_barra, tabela_posX, tabelaX , A_REVERSE, 0, NULL);
+
+            mvwprintw(janela_externa, getcury(janela_externa)+2, (LARGURA_MAX_CONSOLE-26)/2, "[ESC] - Voltar para o Menu");
+            wrefresh(janela_externa);
+            wrefresh(tabela_produtos);
+
+            tecla_pressionada = wgetch(janela_externa);
+            
+            switch(tecla_pressionada)
+            {
+                case KEY_RIGHT:
+                    pagina_atual++;
+                    break;
+                case KEY_LEFT:
+                    pagina_atual--;
+                    break;
+            }
+
+            if (pagina_atual > total_paginas) pagina_atual = 0;
+            else if (pagina_atual < 0) pagina_atual = total_paginas;
+
+            } while (tecla_pressionada != 27);
+
+            endwin();
             break;
             return 1;
+        }
         case 5:
             break;
             return 1;
-        default:
-            break;
-            return 0;
     }
 }
 
@@ -814,6 +960,19 @@ int sql_retorno(void *Inutilizado, int argc, char **argv, char **coluna)
         if (i != argc-1) strcat(buffer_sql, ",");
     }
     return 0;
+}
+
+int quantidade_digitos(int num)
+{
+    int qntd_digitos = 0;
+
+    do 
+    {
+    num/=10;
+    qntd_digitos++;
+    } while (num != 0);
+
+    return qntd_digitos; 
 }
 
 void colocar_em_maiusculo(char *str)
