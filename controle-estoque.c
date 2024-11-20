@@ -13,7 +13,7 @@
 // #define ALTURA_MAX_JANELA 760
 #define LARGURA_MAX_CONSOLE getmaxx(stdscr)
 #define ALTURA_MAX_CONSOLE getmaxy(stdscr)
-#define VERSAO_PROGRAMA 0.2
+#define VERSAO_PROGRAMA 0.5
 
     typedef struct {
 
@@ -159,7 +159,6 @@ sprintf(caminho_banco, "%s\\%s.db", nome_pasta, nome_banco);
             if (!(C.id_fabrica[0] == '\0' || C.nome[0] == '\0' || C.fabricante[0] == '\0' || C.unidade[0] == '\0' || C.valor_uni <= 0)) 
             {
                 adicionar_produto(C);
-                total_itens++;
                 atualizar_maior_id();
                 remove("dados_estoque\\produtos.csv");
             }
@@ -839,7 +838,7 @@ int menu(int opc)
             const int posX_seta_direita = tabelaX+((41*LARGURA_MAX_CONSOLE)/237);
             const int posX_seta_esquerda = tabela_posX+1;
             const int posY_barra = tabelaY+6;
-            const int digitos_paginas = quantidade_digitos(total_itens)+1;
+            const int digitos_paginas = quantidade_digitos(total_itens);
 
             do {
 
@@ -860,30 +859,6 @@ int menu(int opc)
             " ID ┃ CÓDIGO  FABRICA ┃                        NOME                        ┃   FABRICANTE   ┃ UNIDADE ┃ QUANTIDADE ┃ VALOR UNITÁRIO ┃ SUBTOTAL ");
             
             start_color();
-            
-            // if (maior_id > 0)
-            // {
-            //     int j = 0;
-            //     produto P; 
-            //     int ids[total_itens];
-
-            //     for (int i = 1; i <= maior_id; i++)
-            //     {
-            //         if (select_id(&P, i)) ids[j] = P.id;
-            //         j++;
-            //     }
-
-            //     for (int i = 1*pagina_atual; i <= j*pagina_atual; i++)
-            //     {
-            //         select_id(&P, ids[i-1]);
-                    // mvwprintw(tabela_produtos, 3+j, 1," %2d ┃ %15s ┃ %50s ┃ %14s ┃ %7s ┃ %10d ┃ %11.2f ┃ %5.2f ", 
-                    // i, P.id_fabrica, P.nome, P.fabricante, P.unidade, P.quantidade, P.valor_uni, P.subtotal);
-            //         // mvwprintw(tabela_produtos, 3+j, 1,"    ┃                ┃                                                    ┃                ┃         ┃            ┃                ┃          ");
-                    
-            //     }
-
-
-            // }
 
             if (total_itens > 0)
             {
@@ -930,14 +905,13 @@ int menu(int opc)
             {
                 case KEY_RIGHT:
                     pagina_atual++;
+                    if (pagina_atual > total_paginas-1) pagina_atual = 0;
                     break;
                 case KEY_LEFT:
                     pagina_atual--;
+                    if (pagina_atual < 0) pagina_atual = total_paginas;
                     break;
             }
-
-            if (pagina_atual > total_paginas) pagina_atual = 0;
-            else if (pagina_atual < 0) pagina_atual = total_paginas;
 
             } while (tecla_pressionada != 27);
 
