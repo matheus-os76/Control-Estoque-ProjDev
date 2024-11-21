@@ -13,7 +13,7 @@
 // #define ALTURA_MAX_JANELA 760
 #define LARGURA_MAX_CONSOLE getmaxx(stdscr)
 #define ALTURA_MAX_CONSOLE getmaxy(stdscr)
-#define VERSAO_PROGRAMA 0.5
+#define VERSAO_PROGRAMA 0.8
 
     typedef struct {
 
@@ -28,7 +28,6 @@
 
     } produto;
 
-    
     sqlite3 *banco_dados;
     sqlite3_stmt *handler_sql = 0;
 
@@ -131,8 +130,9 @@ sprintf(caminho_banco, "%s\\%s.db", nome_pasta, nome_banco);
                 mvwgetstr(inserir_nome_empresa, 1, 1, buffer_empresa);
                 strcpy(nome_empresa, buffer_empresa);
 
-                sqlite3_exec(banco_dados, "SELECT COUNT(id) FROM produtos;", sql_retorno, 0, &erro_sql);
-                total_itens = atoi(buffer_sql);
+                // sqlite3_exec(banco_dados, "SELECT COUNT(id) FROM produtos;", sql_retorno, 0, &erro_sql);
+                // total_itens = atoi(buffer_sql);
+                atualizar_total_itens();
                 fprintf(configs, buffer_empresa);
                 fprintf(configs, ",%d",total_itens);
             
@@ -155,6 +155,10 @@ sprintf(caminho_banco, "%s\\%s.db", nome_pasta, nome_banco);
             produto C;
             sscanf(buffer_csv,"%15[^,],%50[^,],%14[^,],%2[^,],%d,%f,%f",
             C.id_fabrica,C.nome,C.fabricante,C.unidade,&C.quantidade,&C.valor_uni,&C.subtotal);
+
+            colocar_em_maiusculo(C.nome);
+            colocar_em_maiusculo(C.fabricante);
+            colocar_em_maiusculo(C.unidade);
 
             if (!(C.id_fabrica[0] == '\0' || C.nome[0] == '\0' || C.fabricante[0] == '\0' || C.unidade[0] == '\0' || C.valor_uni <= 0)) 
             {
@@ -209,6 +213,9 @@ sprintf(caminho_banco, "%s\\%s.db", nome_pasta, nome_banco);
 
         mvwprintw(caixaInfo, 5, ( InfoX - strlen(nome_empresa) ) / 2, 
         "%s", nome_empresa);
+
+        mvwprintw(caixaInfo, ALTURA_MAX_CONSOLE-4, ( InfoX - (quantidade_digitos(total_itens) + 30) )/2, 
+        "Quantidade Total de Produtos: %0*d", quantidade_digitos(total_itens), total_itens);
 
         mvwprintw(tabela_produtos, 2, 0, "├");
         for (int i = 1; i < getmaxx(tabela_produtos)-1; i++)
@@ -306,8 +313,11 @@ sprintf(caminho_banco, "%s\\%s.db", nome_pasta, nome_banco);
                         opcao_selecionada++;
                         if (opcao_selecionada > qntd_opcoes-1) opcao_selecionada = 0;
                         break;
+                    case 27:
+                        rodar_programa = 0;
+                        break;
                 }
-            } while (tecla_pressionada != 10);
+            } while (!(tecla_pressionada == 10 || tecla_pressionada == 27));
 
             delwin(caixa_opcoes_maior);
             delwin(caixa_opcoes_menor);
@@ -315,7 +325,7 @@ sprintf(caminho_banco, "%s\\%s.db", nome_pasta, nome_banco);
             delwin(tabela_produtos);
             endwin();
 
-            if (opcao_selecionada == qntd_opcoes-1)
+            if (opcao_selecionada == qntd_opcoes-1 || tecla_pressionada == 27)
                 rodar_programa = 0;
             else if (opcao_selecionada < qntd_opcoes)
                 menu(opcao_selecionada+1);
@@ -645,14 +655,20 @@ int menu(int opc)
             initscr();
 
             const int quadrado_removerY = (3*ALTURA_MAX_CONSOLE)/5;
-            const int quadrado_removerX = (140+quadrado_removerY)/3;
+            const int quadrado_removerX = 50;
             const int quadrado_pY = ALTURA_MAX_CONSOLE/4;
+            const int tituloY = (7*ALTURA_MAX_CONSOLE)/63;
+            const int tituloX = (40*LARGURA_MAX_CONSOLE)/273;
+            const int distX = LARGURA_MAX_CONSOLE/10;
 
             WINDOW * janela_externa = newwin(ALTURA_MAX_CONSOLE, LARGURA_MAX_CONSOLE, 0, 0);
-            WINDOW * janela_remover_produtos = newwin(quadrado_removerY, quadrado_removerX, quadrado_pY, quadrado_pY);
-            WINDOW * janela_info = newwin(quadrado_removerY, quadrado_removerX, quadrado_pY, (188*LARGURA_MAX_CONSOLE)/273);
-            WINDOW * janela_titulo = newwin(7, 40, 20, (LARGURA_MAX_CONSOLE/2)-20);
-            WINDOW * ler_remover = newwin(10, quadrado_removerX-2, quadrado_pY+6, quadrado_pY+1);
+
+            WINDOW * janela_remover_produtos = newwin(quadrado_removerY, quadrado_removerX, quadrado_pY, distX);
+            WINDOW * janela_info = newwin(quadrado_removerY, quadrado_removerX, quadrado_pY, LARGURA_MAX_CONSOLE-(quadrado_removerX+distX));
+
+            WINDOW * janela_titulo = newwin(tituloY, tituloX, 2, (LARGURA_MAX_CONSOLE-tituloX)/2);
+            WINDOW * ler_remover = newwin(quadrado_removerY-2, quadrado_removerX-2, getbegy(janela_remover_produtos)+1, getbegx(janela_remover_produtos)+1);
+
             refresh();
 
             box(janela_externa, 0, 0);
@@ -660,8 +676,8 @@ int menu(int opc)
             box(janela_info, 0, 0);
             box(janela_titulo, 0, 0);
 
-            mvwprintw(janela_titulo, 3, 11, "REMOVER  PRODUTOS");
-            mvwprintw(janela_remover_produtos, quadrado_removerY/10, (quadrado_removerX/2)-8, "Tipos de Remoção");
+            mvwprintw(janela_titulo, tituloY/2, (tituloX-17)/2, "REMOVER  PRODUTOS");
+            mvwprintw(ler_remover, quadrado_removerY/10, (quadrado_removerX-18)/2, "Tipos de Remoção");
 
             if (total_itens == 0 || maior_id == 0)
                 mvwprintw(janela_info, quadrado_removerY/10, 5, "Não há nenhum Produto registrado no estoque");
@@ -678,23 +694,23 @@ int menu(int opc)
 
             const int tipos_remover = 2;
             char lista_remover[2][30] = {{"Remover 1 produto"},{"Remover vários produtos"}};
-            int tecla_pressionada = 0, opc_selecionada = 0, y_atual = getcury(janela_remover_produtos);
+            int tecla_pressionada = 0, opc_selecionada = 0, y_atual = getcury(ler_remover);
 
-            keypad(janela_remover_produtos, true);
+            keypad(ler_remover, true);
             curs_set(0);
             noecho();
 
-            while (tecla_pressionada != 10)
+            while (!(tecla_pressionada == 10 || tecla_pressionada == 27))
             {   
                 for (int i = 0; i < tipos_remover; i++)
                 {
-                    if (i == opc_selecionada) wattron(janela_remover_produtos, A_STANDOUT);
-                    mvwprintw(janela_remover_produtos, y_atual+4+i*3, 4, lista_remover[i]);
-                    wattroff(janela_remover_produtos, A_STANDOUT);
+                    if (i == opc_selecionada) wattron(ler_remover, A_STANDOUT);
+                    mvwprintw(ler_remover, y_atual+4+i*3, 4, lista_remover[i]);
+                    wattroff(ler_remover, A_STANDOUT);
                 }
-                wrefresh(janela_remover_produtos);
+                wrefresh(ler_remover);
 
-                tecla_pressionada = wgetch(janela_remover_produtos);
+                tecla_pressionada = wgetch(ler_remover);
 
                 switch(tecla_pressionada)
                 {
@@ -714,101 +730,103 @@ int menu(int opc)
 
             char buffer_rem[21];
 
-            if (opc_selecionada == 0)
+            if (tecla_pressionada != 27)
             {
-
-                curs_set(1);
-                wclear(janela_remover_produtos);
-                box(janela_remover_produtos, 0, 0);
-                mvwprintw(janela_remover_produtos, y_atual, (quadrado_removerX/2)-9, "Remover um Produto");
-                wrefresh(janela_remover_produtos);
-
-                mvwprintw(ler_remover, 0, 2, "Digite o ID do produto: ");
-                wgetnstr(ler_remover, buffer_rem, 21);
-                wrefresh(ler_remover);
-                
-                int id_rem = atoi(buffer_rem);
-                
-                if (id_rem <= 0)
+                if (opc_selecionada == 0)
                 {
-                    mvwprintw(ler_remover, 2, 2, "ID inválido, por favor insira outro!");
-                    wrefresh(ler_remover);
-                    wgetch(ler_remover);
-                }
-                else
-                {
-                    mvwprintw(ler_remover, 3, 2, "Você tem certeza que quer");
-                    mvwprintw(ler_remover, 4, 2, "apagar o ID %d? [S] / [N]", id_rem);
-                    char resposta = mvwgetch(ler_remover, 6, 4);
+
+                    curs_set(1);
+                    wclear(ler_remover);
+                    mvwprintw(ler_remover, quadrado_removerY/10, (quadrado_removerX-20)/2, "Remover um Produto");
                     wrefresh(ler_remover);
 
-                    if (tolower(resposta) == 's' && total_itens > 0)
-                    {
-                        int retorno = remover_produto(id_rem, id_rem);
-                        if (id_rem == maior_id) atualizar_maior_id();
-                        total_itens--;
-                    }
-                        
-                }
-
-            }
-            else if (opc_selecionada == 1)
-            {
-                curs_set(1);
-                wclear(janela_remover_produtos);
-                box(janela_remover_produtos, 0, 0);
-                mvwprintw(janela_remover_produtos, y_atual, (quadrado_removerX/2)-14, "Remover um grupo de Produtos");
-                wrefresh(janela_remover_produtos);
-
-                mvwprintw(ler_remover, 0, 2, "Digite o ID inicial: ");
-                wgetnstr(ler_remover, buffer_rem, 21);
-                wrefresh(ler_remover);
-                
-                int id_inicio_rem = atoi(buffer_rem);
-
-                if (id_inicio_rem <= 0)
-                {
-                    mvwprintw(ler_remover, 2, 2, "ID inválido, por favor insira outro!");
-                    wrefresh(ler_remover);
-                    wgetch(ler_remover);
-                }
-                else
-                {
-                    buffer_rem[0] = '\0';
-                    mvwprintw(ler_remover, 2, 2, "Digite o ID final: ");
+                    mvwprintw(ler_remover, getcury(ler_remover)+4, 2, "Digite o ID do produto: ");
                     wgetnstr(ler_remover, buffer_rem, 21);
                     wrefresh(ler_remover);
-
-                    int id_final_rem = atoi(buffer_rem);
-
-                    if (id_final_rem <= 0 || (id_final_rem < id_inicio_rem))
+                    
+                    int id_rem = atoi(buffer_rem);
+                    
+                    if (id_rem <= 0)
                     {
-                        mvwprintw(ler_remover, 4, 2, "ID inválido, por favor insira outro!");
+                        mvwprintw(ler_remover, getcury(ler_remover)+2, 2, "ID inválido, por favor insira outro!");
                         wrefresh(ler_remover);
                         wgetch(ler_remover);
                     }
                     else
                     {
-                        mvwprintw(ler_remover, 5, 2, "Você tem certeza que quer");
-                        mvwprintw(ler_remover, 6, 2, "apagar todos os IDs de %d até %d? [S] / [N]", id_inicio_rem, id_final_rem);
+                        mvwprintw(ler_remover, getcury(ler_remover)+2, 2, "Você tem certeza que quer");
+                        mvwprintw(ler_remover, getcury(ler_remover)+1, 2, "apagar o ID %d? [S] / [N]", id_rem);
+                        char resposta = mvwgetch(ler_remover, getcury(ler_remover)+2, 4);
                         wrefresh(ler_remover);
-                        char resposta = mvwgetch(ler_remover, 8, 2);
 
-                        if (tolower(resposta) == 's')
-                        {                            
-                            if (total_itens > 0)
-                            {
-                                remover_produto(id_inicio_rem, id_final_rem);
-                                    
-                                atualizar_total_itens();
-                                atualizar_maior_id();
-                            }
+                        if (tolower(resposta) == 's' && total_itens > 0)
+                        {
+                            int retorno = remover_produto(id_rem, id_rem);
+                            if (id_rem == maior_id) atualizar_maior_id();
+                            total_itens--;
                         }
+                            
                     }
 
+                }
+                else if (opc_selecionada == 1)
+                {
+                    curs_set(1);
+                    wclear(ler_remover);
+                    mvwprintw(ler_remover, y_atual, (quadrado_removerX-30)/2, "Remover um grupo de Produtos");
+                    wrefresh(ler_remover);
+
+                    mvwprintw(ler_remover, getcury(ler_remover)+4, 2, "Digite o ID inicial: ");
+                    wgetnstr(ler_remover, buffer_rem, 21);
+                    wrefresh(ler_remover);
                     
+                    int id_inicio_rem = atoi(buffer_rem);
+
+                    if (id_inicio_rem <= 0)
+                    {
+                        mvwprintw(ler_remover, getcury(ler_remover)+2, 2, "ID inválido, por favor insira outro!");
+                        wrefresh(ler_remover);
+                        wgetch(ler_remover);
+                    }
+                    else
+                    {
+                        buffer_rem[0] = '\0';
+                        mvwprintw(ler_remover, getcury(ler_remover)+2, 2, "Digite o ID final: ");
+                        wgetnstr(ler_remover, buffer_rem, 21);
+                        wrefresh(ler_remover);
+
+                        int id_final_rem = atoi(buffer_rem);
+
+                        if (id_final_rem <= 0 || (id_final_rem < id_inicio_rem))
+                        {
+                            mvwprintw(ler_remover, getcury(ler_remover)+2, 2, "ID inválido, por favor insira outro!");
+                            wrefresh(ler_remover);
+                            wgetch(ler_remover);
+                        }
+                        else
+                        {
+                            mvwprintw(ler_remover, getcury(ler_remover)+2, 2, "Você tem certeza que quer");
+                            mvwprintw(ler_remover, getcury(ler_remover)+1, 2, "apagar todos os IDs de %d até %d? [S] / [N]", id_inicio_rem, id_final_rem);
+                            wrefresh(ler_remover);
+                            char resposta = mvwgetch(ler_remover, getcury(ler_remover)+2, 2);
+
+                            if (tolower(resposta) == 's')
+                            {                            
+                                if (total_itens > 0)
+                                {
+                                    remover_produto(id_inicio_rem, id_final_rem);
+                                        
+                                    atualizar_total_itens();
+                                    atualizar_maior_id();
+                                }
+                            }
+                        }
+
                         
-            }
+                            
+                }
+
+                }
 
             }
 
@@ -832,13 +850,13 @@ int menu(int opc)
             int total_paginas = total_itens/produtos_por_pagina;
             int pagina_atual = 0;
 
-            // if (total_itens % produtos_por_pagina != 0) total_paginas++;
+            if (total_itens % produtos_por_pagina != 0) total_paginas++;
 
             int tecla_pressionada;
             const int posX_seta_direita = tabelaX+((41*LARGURA_MAX_CONSOLE)/237);
             const int posX_seta_esquerda = tabela_posX+1;
-            const int posY_barra = tabelaY+6;
-            const int digitos_paginas = quantidade_digitos(total_itens);
+            const int posY_barra = tabelaY+tabela_posY;
+            const int digitos_paginas = quantidade_digitos(total_paginas);
 
             do {
 
@@ -909,7 +927,7 @@ int menu(int opc)
                     break;
                 case KEY_LEFT:
                     pagina_atual--;
-                    if (pagina_atual < 0) pagina_atual = total_paginas;
+                    if (pagina_atual < 0) pagina_atual = total_paginas-1;
                     break;
             }
 
@@ -920,14 +938,342 @@ int menu(int opc)
             return 1;
         }
         case 5:
+        {   
+            initscr();
+            noecho();
+            cbreak();
+            curs_set(0);
+
+            const int selecionarY = ALTURA_MAX_CONSOLE/2;
+            const int selecionarX = LARGURA_MAX_CONSOLE/4;
+            const int selecionar_pY = (ALTURA_MAX_CONSOLE-selecionarY)/2;
+            const int selecionar_pX = (LARGURA_MAX_CONSOLE-selecionarX)/2;
+
+            WINDOW * janela_externa = newwin(ALTURA_MAX_CONSOLE, LARGURA_MAX_CONSOLE, 0, 0);
+            WINDOW * janela_selecionar_filtro = newwin(selecionarY, selecionarX, selecionar_pY, selecionar_pX);
+            keypad(janela_selecionar_filtro, TRUE);
+            refresh();
+
+            char filtros[][30] = {
+                {"Quantidade Zero"},
+                {"Quantidade Menor que"},
+                {"Quantidade Maior que"},
+                {"Valor Menor que"},
+                {"Valor Maior que"}
+            };
+
+            int qntd_filtros = sizeof(filtros)/sizeof(filtros[0]), tecla_pressionada , opc_selecionada = 0; 
+
+            box(janela_externa, 0, 0);
+            box(janela_selecionar_filtro, 0, 0);
+
+            mvwaddstr(janela_selecionar_filtro, selecionarY/8, (selecionarX-16)/2, "LISTA DE FILTROS");
+            mvwaddstr(janela_selecionar_filtro, selecionarY-3, (selecionarX-26)/2, "[ESC] - Voltar para o Menu");
+
+            wrefresh(janela_externa);
+            wrefresh(janela_selecionar_filtro);
+
+            do {
+
+                for (int i = 0; i < qntd_filtros; i++)
+                {
+                    if (i == opc_selecionada) wattron(janela_selecionar_filtro, A_STANDOUT);
+                    mvwprintw(janela_selecionar_filtro, (selecionarY/5)+(i*2), 3, "%s [X]", filtros[i]);
+                    wattroff(janela_selecionar_filtro, A_STANDOUT);
+                }
+
+                tecla_pressionada = wgetch(janela_selecionar_filtro);
+
+                switch(tecla_pressionada)
+                {
+                    case KEY_UP:
+                        opc_selecionada--;
+                        if (opc_selecionada < 0) opc_selecionada = qntd_filtros-1;
+                        break;
+                    case KEY_DOWN:
+                        opc_selecionada++;
+                        if (opc_selecionada > qntd_filtros-1) opc_selecionada = 0;
+                        break;
+                }
+
+            } while (!(tecla_pressionada == 10 || tecla_pressionada == 27));
+
+            wclear(janela_selecionar_filtro);
+            box(janela_selecionar_filtro, 0, 0);
+
+            WINDOW * ler_condicao = newwin(selecionarY-2, selecionarX-2, selecionar_pY+1, selecionar_pX+1);
+            char buffer_condicao[20];
+            float numero_condicao;
+
+                if (tecla_pressionada == 27)
+                {
+                    delwin(janela_selecionar_filtro);
+                    delwin(janela_externa);
+                    endwin();
+                    return 1;
+                }
+
+                if (opc_selecionada > 0)
+                {
+                    echo();
+                    curs_set(1);
+                    
+                    mvwprintw(ler_condicao, (selecionarY/8)-1, ((selecionarX-16)/2), "CRIAR CONDIÇÃO");
+                    mvwprintw(ler_condicao, getcury(ler_condicao)+2, 3, "%s: ",filtros[opc_selecionada]);
+
+                    wgetnstr(ler_condicao, buffer_condicao, 20);
+
+                    if (isdigit(buffer_condicao[0])) numero_condicao = atof(buffer_condicao);
+                    else
+                    {
+                    mvwprintw(ler_condicao, getcury(ler_condicao)+2, ((selecionarX-44)/2), "Condição inválida! Por favor tente novamente");
+                    wgetch(ler_condicao);
+                    }
+                    wrefresh(ler_condicao);
+
+                    wclear(ler_condicao);
+                    wclear(janela_selecionar_filtro);
+                    delwin(ler_condicao);
+                    delwin(janela_selecionar_filtro);
+                } 
+                else if (opc_selecionada == 0) numero_condicao = 0;
+
+            int total_itens_filtro;
+
+                if (opc_selecionada < 3)
+                {
+                    int retorno_filtro;
+
+                    switch(opc_selecionada)
+                    {
+                        case 0:
+                            retorno_filtro = sqlite3_prepare_v2(banco_dados, "SELECT COUNT(id) FROM produtos WHERE quantidade = ?", -1, &handler_sql, 0 );
+                            break;
+                        case 1:
+                            retorno_filtro = sqlite3_prepare_v2(banco_dados, "SELECT COUNT(id) FROM produtos WHERE quantidade < ?", -1, &handler_sql, 0 );
+                            break;
+                        case 2:
+                            retorno_filtro = sqlite3_prepare_v2(banco_dados, "SELECT COUNT(id) FROM produtos WHERE quantidade > ?", -1, &handler_sql, 0 );
+                            break;
+                    }
+
+                    retorno_filtro = sqlite3_bind_int( handler_sql, 1, (int)numero_condicao);
+                    retorno_filtro = sqlite3_step( handler_sql );
+
+                    if (retorno_filtro == SQLITE_ROW) total_itens_filtro = atoi(sqlite3_column_text(handler_sql, 0 ));
+                } 
+                else
+                {
+                    int retorno_filtro;
+
+                    switch(opc_selecionada)
+                    {
+                        case 3:
+                            retorno_filtro = sqlite3_prepare_v2(banco_dados, "SELECT COUNT(id) FROM produtos WHERE valor_uni < ?", -1, &handler_sql, 0 );
+                            break;
+                        case 4:
+                            retorno_filtro = sqlite3_prepare_v2(banco_dados, "SELECT COUNT(id) FROM produtos WHERE valor_uni > ?", -1, &handler_sql, 0 );
+                            break;
+                    }
+
+                    retorno_filtro = sqlite3_bind_double( handler_sql, 1, numero_condicao);
+                    retorno_filtro = sqlite3_step( handler_sql );
+
+                    if (retorno_filtro == SQLITE_ROW) total_itens_filtro = atoi(sqlite3_column_text(handler_sql, 0 ));
+                }
+   
+            const int tabelaX = 145;
+            const int tabelaY = 4*ALTURA_MAX_CONSOLE/5;
+            const int tabela_posX = (LARGURA_MAX_CONSOLE-tabelaX)/2;
+            const int tabela_posY = (ALTURA_MAX_CONSOLE-tabelaY)/2;
+            const int posX_seta_direita = tabelaX+((41*LARGURA_MAX_CONSOLE)/237);
+            const int posX_seta_esquerda = tabela_posX+1;
+            const int posY_barra = tabelaY+tabela_posY;
+            const int produtos_por_pagina = tabelaY-4;
+
+            int total_paginas = total_itens_filtro/produtos_por_pagina;
+
+            if (total_itens_filtro % produtos_por_pagina != 0) total_paginas++;
+
+            const int digitos_paginas = quantidade_digitos(total_paginas)+1;
+
+            int pagina_atual = 0;
+
+            do {
+            
+            WINDOW * tabela_produtos = newwin(tabelaY, tabelaX, tabela_posY, tabela_posX);
+            keypad(janela_externa, TRUE);
+            noecho();
+            curs_set(0);
+
+            refresh();
+            wborder(tabela_produtos, 9553, 9553, 9552, 9552, 9556, 9559, 9562, 9565);
+
+                switch(opc_selecionada)
+                {
+                    int tamanho_titulo;
+                    
+                    case 0:
+                        mvwprintw(janela_externa, tabela_posY-3, (LARGURA_MAX_CONSOLE-30)/2, "PRODUTOS COM QUANTIDADE ZERADA");
+                        break;
+                    case 1:
+                        tamanho_titulo = 34+quantidade_digitos((int)numero_condicao);
+
+                        mvwprintw(janela_externa, tabela_posY-3, (LARGURA_MAX_CONSOLE-tamanho_titulo)/2, "PRODUTOS COM QUANTIDADE MENOR QUE %d", (int)numero_condicao);
+                        break;
+                    case 2:
+                        tamanho_titulo = 34+quantidade_digitos((int)numero_condicao);
+
+                        mvwprintw(janela_externa, tabela_posY-3, (LARGURA_MAX_CONSOLE-tamanho_titulo)/2, "PRODUTOS COM QUANTIDADE MAIOR QUE %d", (int)numero_condicao);
+                        break;
+                    case 3:
+                        tamanho_titulo = 29+quantidade_digitos((int)numero_condicao);
+
+                        mvwprintw(janela_externa, tabela_posY-3, (LARGURA_MAX_CONSOLE-tamanho_titulo)/2, "PRODUTOS COM VALOR MENOR QUE %.2f", numero_condicao);
+                        break;
+                    case 4:
+                        tamanho_titulo = 29+quantidade_digitos((int)numero_condicao);
+
+                        mvwprintw(janela_externa, tabela_posY-3, (LARGURA_MAX_CONSOLE-tamanho_titulo)/2, "PRODUTOS COM VALOR MAIOR QUE %.2f", numero_condicao);
+                        break;
+                }
+                
+            mvwprintw(tabela_produtos, 2, 0, "╠");
+            for (int i = 1; i < tabelaX-1; i++)
+                mvwprintw(tabela_produtos, 2, i, "═");
+            mvwprintw(tabela_produtos, 2, tabelaX-1, "╣");     
+            mvwprintw(tabela_produtos, 1, 1, 
+            " ID ┃ CÓDIGO  FABRICA ┃                        NOME                        ┃   FABRICANTE   ┃ UNIDADE ┃ QUANTIDADE ┃ VALOR UNITÁRIO ┃ SUBTOTAL ");
+            
+                if (total_itens_filtro > 0)
+                {
+                    int ids_usados[tabelaY-4], j = 0;
+                    produto P;
+
+                    switch(opc_selecionada)
+                    {
+                        case 0:
+                            for (int i = 1+(pagina_atual*(tabelaY-4)); i <= maior_id; i++)
+                            {
+                                int retorno_select_filtro = select_id(&P, i);
+                        
+                                if (retorno_select_filtro && P.quantidade == 0)
+                                {
+                                    ids_usados[j] = P.id;
+                                    j++;
+                                }
+                                if (j == tabelaY-4) break;
+                            }
+                            break;
+                        case 1:
+                            for (int i = 1+(pagina_atual*(tabelaY-4)); i <= maior_id; i++)
+                            {
+                                int retorno_select_filtro = select_id(&P, i);
+                        
+                                if (retorno_select_filtro && P.quantidade < (int)numero_condicao)
+                                {
+                                    ids_usados[j] = P.id;
+                                    j++;
+                                }
+                                if (j == tabelaY-4) break;
+                            }
+                            break;
+                        case 2:
+                            for (int i = 1+(pagina_atual*(tabelaY-4)); i <= maior_id; i++)
+                            {
+                                int retorno_select_filtro = select_id(&P, i);
+                        
+                                if (retorno_select_filtro && P.quantidade > (int)numero_condicao)
+                                {
+                                    ids_usados[j] = P.id;
+                                    j++;
+                                }
+                                if (j == tabelaY-4) break;
+                            }
+                            break;
+                        case 3:
+                            for (int i = 1+(pagina_atual*(tabelaY-4)); i <= maior_id; i++)
+                            {
+                                int retorno_select_filtro = select_id(&P, i);
+                        
+                                if (retorno_select_filtro && P.valor_uni < numero_condicao)
+                                {
+                                    ids_usados[j] = P.id;
+                                    j++;
+                                }
+                                if (j == tabelaY-4) break;
+                            }
+                            break;
+                        case 4:
+                            for (int i = 1+(pagina_atual*(tabelaY-4)); i <= maior_id; i++)
+                            {
+                                int retorno_select_filtro = select_id(&P, i);
+                        
+                                if (retorno_select_filtro && P.valor_uni > numero_condicao)
+                                {
+                                    ids_usados[j] = P.id;
+                                    j++;
+                                }
+                                if (j == tabelaY-4) break;
+                            }
+                            break;
+                    }
+
+                    for (int i = 0; i < j; i++)
+                    {         
+                        select_id(&P, ids_usados[i]);                  
+                        mvwprintw(tabela_produtos, 3+i, 1," %2d ┃ %15s ┃ %50s ┃ %14s ┃ %7s ┃ %10d ┃ %14.2f ┃ %5.2f ", 
+                        P.id, P.id_fabrica, P.nome, P.fabricante, P.unidade, P.quantidade, P.valor_uni, P.subtotal); 
+                        // mvwprintw(tabela_produtos, 3+i, 1, "%d", ids_usados[i]);
+                    }
+                        
+                    for (int i = getcury(tabela_produtos)+1; i < tabelaY-1; i++)
+                        mvwprintw(tabela_produtos, i, 1, "    ┃                 ┃                                                    ┃                ┃         ┃            ┃                ┃          ");
+                    
+                }
+
+            mvwprintw(janela_externa, posY_barra, posX_seta_esquerda, " <- ");
+            mvwprintw(janela_externa, posY_barra, posX_seta_direita, " -> ");
+            mvwprintw(janela_externa, posY_barra, (LARGURA_MAX_CONSOLE-(20+(2*digitos_paginas)))/2, "┃ PÁGINA %0*d   /   %0*d ┃",
+            digitos_paginas, pagina_atual+1, digitos_paginas, total_paginas);
+            mvwchgat(janela_externa, posY_barra, tabela_posX, tabelaX , A_REVERSE, 0, NULL);
+
+            mvwprintw(janela_externa, getcury(janela_externa)+2, (LARGURA_MAX_CONSOLE-26)/2, "[ESC] - Voltar para o Menu");
+
+            // mvwprintw(janela_externa, 3, 3, "num condicao: %f", numero_condicao);
+            // mvwprintw(janela_externa, 4, 3, "total itens: %d", total_itens_filtro);
+            // mvwprintw(janela_externa, 5, 3, "digitos: %d", quantidade_digitos((int)numero_condicao));
+
+            wrefresh(janela_externa);
+            wrefresh(tabela_produtos);
+
+            tecla_pressionada = wgetch(janela_externa);
+
+            switch(tecla_pressionada)
+            {
+                case KEY_RIGHT:
+                    pagina_atual++;
+                    if (pagina_atual > total_paginas-1) pagina_atual = 0;
+                    break;
+                case KEY_LEFT:
+                    pagina_atual--;
+                    if (pagina_atual < 0) pagina_atual = total_paginas-1;
+                    break;
+            }
+
+            } while (tecla_pressionada != 27);
+            
+            endwin();
+
             break;
             return 1;
+        
+        }
     }
 }
 
 int sql_retorno(void *Inutilizado, int argc, char **argv, char **coluna)
 {
-    buffer_sql[0] = '\0';
     for (int i = 0; i < argc; i++)
     {
         strcat(buffer_sql, argv[i]);
@@ -938,13 +1284,11 @@ int sql_retorno(void *Inutilizado, int argc, char **argv, char **coluna)
 
 int quantidade_digitos(int num)
 {
-    int qntd_digitos = 0;
 
-    do 
-    {
-    num/=10;
-    qntd_digitos++;
-    } while (num != 0);
+    char buffer_digitos[21];
+
+    sprintf(buffer_digitos, "%d",num);
+    int qntd_digitos = strlen(buffer_digitos);
 
     return qntd_digitos; 
 }
