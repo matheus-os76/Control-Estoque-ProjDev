@@ -4,9 +4,10 @@ Projeto de segundo semestre da faculdade destinado a ajudar *pequenas e locais e
 
 ## Lista de Funções
 
-- [ ] CRUD 📑
-- [ ] Alerta de Datas de Vencimento 📆
+- [x] CRUD 📑
+- [x] Importar produtos com CSV
 - [ ] Alerta de Quantia Nula 0️⃣
+- [ ] Lista de Fabricantes
 - [ ] Temas 🎨
 
 ## Compatibilidade
