@@ -13,7 +13,7 @@
 // #define ALTURA_MAX_JANELA 760
 #define LARGURA_MAX_CONSOLE getmaxx(stdscr)
 #define ALTURA_MAX_CONSOLE getmaxy(stdscr)
-#define VERSAO_PROGRAMA 0.8
+#define VERSAO_PROGRAMA 0.6
 
     typedef struct {
 
@@ -41,6 +41,7 @@
 void colocar_em_maiusculo(char *str);
 void virgula_pra_ponto(char *str);
 int quantidade_digitos(int num);
+int converter_rgb(int cor);
 
 int atualizar_total_itens();
 int atualizar_maior_id();
@@ -184,6 +185,20 @@ sprintf(caminho_banco, "%s\\%s.db", nome_pasta, nome_banco);
         cbreak();
         curs_set(0);
 
+        start_color();
+
+        init_pair(1, COLOR_BLUE, COLOR_WHITE);
+        init_color(COLOR_BLUE, converter_rgb(9), converter_rgb(16), converter_rgb(87));
+        init_color(COLOR_WHITE, converter_rgb(240), converter_rgb(242), converter_rgb(246));
+
+        init_pair(2, COLOR_BLACK, COLOR_CYAN);
+        init_color(COLOR_CYAN, converter_rgb(209), converter_rgb(233), converter_rgb(246));
+        init_color(COLOR_BLACK, 0, 0, 0);
+
+        init_pair(3, COLOR_BLACK, COLOR_YELLOW);
+        init_color(COLOR_YELLOW, converter_rgb(255), converter_rgb(233), 0);
+        init_color(COLOR_BLACK, 0, 0, 0);
+
         const int opcaoMaiorY = ALTURA_MAX_CONSOLE;
         const int opcaoMaiorX = LARGURA_MAX_CONSOLE/3;
         const int opcaoMenorY = ALTURA_MAX_CONSOLE-16;
@@ -194,6 +209,12 @@ sprintf(caminho_banco, "%s\\%s.db", nome_pasta, nome_banco);
         WINDOW * caixa_opcoes_menor = newwin( opcaoMenorY, opcaoMaiorX, 10, 0 );
         WINDOW * caixaInfo = newwin( opcaoMaiorY, InfoX, 0, opcaoMaiorX - 1 );
         WINDOW * tabela_produtos = newwin( opcaoMenorY, tabelaX, 10, opcaoMaiorX + ((InfoX - tabelaX)/2));
+        
+        wbkgd(caixa_opcoes_maior, COLOR_PAIR(1));
+        wbkgd(caixa_opcoes_menor, COLOR_PAIR(1));
+        wbkgd(caixaInfo, COLOR_PAIR(1));
+        wbkgd(tabela_produtos, COLOR_PAIR(2));
+
         refresh();
 
         box(tabela_produtos, 0, 0);
@@ -203,9 +224,11 @@ sprintf(caminho_banco, "%s\\%s.db", nome_pasta, nome_banco);
 
         mvwprintw(caixa_opcoes_maior, 4, ( opcaoMaiorX - 21 ) / 2,
         "CONTROLE DE ESTOQUE");
+        mvwchgat(caixa_opcoes_maior, 4, ( opcaoMaiorX - 21 ) / 2, 19, A_NORMAL, 3, NULL);
 
         mvwprintw(caixa_opcoes_maior, 6, ( opcaoMaiorX - 4 ) / 2, 
         "%.1f", VERSAO_PROGRAMA);
+        mvwchgat(caixa_opcoes_maior, 6, ( opcaoMaiorX - 4 ) / 2, 3, A_NORMAL, 3, NULL);
 
         mvwprintw(caixa_opcoes_maior, ( opcaoMaiorY - 4 ), ( opcaoMaiorX - 30 ) / 2, 
         "[  DATA: %2d  /  %2d  /  %4d  ]",
@@ -213,6 +236,7 @@ sprintf(caminho_banco, "%s\\%s.db", nome_pasta, nome_banco);
 
         mvwprintw(caixaInfo, 5, ( InfoX - strlen(nome_empresa) ) / 2, 
         "%s", nome_empresa);
+        mvwchgat(caixaInfo, 5, ( InfoX - strlen(nome_empresa) ) / 2, strlen(nome_empresa), A_NORMAL, 3, NULL);
 
         mvwprintw(caixaInfo, ALTURA_MAX_CONSOLE-4, ( InfoX - (quantidade_digitos(total_itens) + 30) )/2, 
         "Quantidade Total de Produtos: %0*d", quantidade_digitos(total_itens), total_itens);
@@ -364,11 +388,32 @@ int menu(int opc)
             const int tabelaX = ((17*InfoX)/20);
 
             initscr();
+            
+            start_color();
+
+            init_pair(1, COLOR_BLUE, COLOR_WHITE);
+            init_color(COLOR_BLUE, converter_rgb(9), converter_rgb(16), converter_rgb(87));
+            init_color(COLOR_WHITE, converter_rgb(240), converter_rgb(242), converter_rgb(246));
+
+            init_pair(2, COLOR_BLACK, COLOR_CYAN);
+            init_color(COLOR_CYAN, converter_rgb(209), converter_rgb(233), converter_rgb(246));
+            init_color(COLOR_BLACK, 0, 0, 0);
+
+            init_pair(3, COLOR_BLACK, COLOR_YELLOW);
+            init_color(COLOR_YELLOW, converter_rgb(255), converter_rgb(233), 0);
+            init_color(COLOR_BLACK, 0, 0, 0);
+
             WINDOW * janela_tabela = newwin( ALTURA_MAX_CONSOLE, LARGURA_MAX_CONSOLE-add_produtoX, 0, add_produtoX-1);
             WINDOW * janela_add_produto = newwin( ALTURA_MAX_CONSOLE-((ALTURA_MAX_CONSOLE-tabelaY)/2), add_produtoX, ((ALTURA_MAX_CONSOLE-tabelaY)/2), 0 );
             WINDOW * tabela_produtos = newwin( tabelaY, tabelaX, (ALTURA_MAX_CONSOLE-tabelaY)/2, add_produtoX + ((InfoX - tabelaX)/2));
             WINDOW * janela_titulo = newwin( ((ALTURA_MAX_CONSOLE-tabelaY)/2)+1, add_produtoX, 0, 0);
             WINDOW * ler_add_produto = newwin(14, add_produtoX-2, ALTURA_MAX_CONSOLE/4, 1);
+
+            wbkgd(janela_add_produto, COLOR_PAIR(1));
+            wbkgd(tabela_produtos, COLOR_PAIR(1));
+            wbkgd(janela_titulo, COLOR_PAIR(1));
+            wbkgd(ler_add_produto, COLOR_PAIR(1));
+            wbkgd(janela_tabela, COLOR_PAIR(2));
 
             refresh();
             box(tabela_produtos, 0, 0);
@@ -376,6 +421,7 @@ int menu(int opc)
             wborder(janela_tabela, 0, 0, 0, 0, 0, 0, 9524, 0);
 
             mvwprintw(janela_tabela, (ALTURA_MAX_CONSOLE-tabelaY)/4, (LARGURA_MAX_CONSOLE-add_produtoX-21)/2, "Histórico de Produtos");
+            mvwchgat(janela_tabela, (ALTURA_MAX_CONSOLE-tabelaY)/4, (LARGURA_MAX_CONSOLE-add_produtoX-21)/2, 21, A_NORMAL, 3, NULL);
 
             mvwprintw(tabela_produtos, 2, 0, "├");
             for (int i = 1; i < getmaxx(tabela_produtos)-1; i++)
@@ -395,6 +441,7 @@ int menu(int opc)
                 wclear(ler_add_produto);
                 box(janela_add_produto, 0, 0);
                 mvwprintw(janela_titulo, (ALTURA_MAX_CONSOLE-tabelaY)/4, (getmaxx(janela_titulo)-24)/2, "ADICIONAR %2d° PRODUTO", num_produto);
+                mvwchgat(janela_titulo, (ALTURA_MAX_CONSOLE-tabelaY)/4, (getmaxx(janela_titulo)-24)/2, 21, A_NORMAL, 3, NULL);
                 mvwprintw(ler_add_produto, 0, 2, "ID do Fabricante: ");
 
                 wrefresh(janela_add_produto);
@@ -494,6 +541,21 @@ int menu(int opc)
         case 2:
         {
             initscr();
+
+            start_color();
+
+            init_pair(1, COLOR_BLUE, COLOR_WHITE);
+            init_color(COLOR_BLUE, converter_rgb(9), converter_rgb(16), converter_rgb(87));
+            init_color(COLOR_WHITE, converter_rgb(240), converter_rgb(242), converter_rgb(246));
+
+            init_pair(2, COLOR_BLACK, COLOR_CYAN);
+            init_color(COLOR_CYAN, converter_rgb(209), converter_rgb(233), converter_rgb(246));
+            init_color(COLOR_BLACK, 0, 0, 0);
+
+            init_pair(3, COLOR_BLACK, COLOR_YELLOW);
+            init_color(COLOR_YELLOW, converter_rgb(255), converter_rgb(233), 0);
+            init_color(COLOR_BLACK, 0, 0, 0);
+
             echo();
             curs_set(1);
             const int janela_idX = (25*LARGURA_MAX_CONSOLE)/100;
@@ -505,6 +567,10 @@ int menu(int opc)
             WINDOW * janela_externa = newwin(ALTURA_MAX_CONSOLE, LARGURA_MAX_CONSOLE, 0, 0);
             WINDOW * janela_id = newwin(janela_idY, janela_idX, metadeY-(janela_idY/2), metadeX-(janela_idX/2));
             WINDOW * janela_ler_id = newwin(janela_idY-2, janela_idX-2, metadeY-(janela_idY/2)+1, metadeX-(janela_idX/2)+1);
+
+            wbkgd(janela_externa, COLOR_PAIR(1));
+            wbkgd(janela_id, COLOR_PAIR(2));
+            wbkgd(janela_ler_id, COLOR_PAIR(2));
 
             refresh();
             box(janela_externa, 0, 0);
@@ -546,6 +612,13 @@ int menu(int opc)
             WINDOW * inserir_novas_infos = newwin(ALTURA_MAX_CONSOLE-2-tituloY, metadeX-2, tituloY, 1);
             WINDOW * titulo = newwin(tituloY, metadeX, 0, 0);
             WINDOW * titulo_id_original = newwin(tituloY, metadeX, 0, metadeX-1);
+
+            wbkgd(janela_esquerda, COLOR_PAIR(2));
+            wbkgd(janela_direita, COLOR_PAIR(2));
+            wbkgd(inserir_novas_infos, COLOR_PAIR(2));
+            wbkgd(titulo_id_original, COLOR_PAIR(1));
+            wbkgd(titulo, COLOR_PAIR(1));
+
             refresh();
 
             box(janela_esquerda, 0, 0);
@@ -653,6 +726,19 @@ int menu(int opc)
         case 3:
         {
             initscr();
+            start_color();
+
+            init_pair(1, COLOR_BLUE, COLOR_WHITE);
+            init_color(COLOR_BLUE, converter_rgb(9), converter_rgb(16), converter_rgb(87));
+            init_color(COLOR_WHITE, converter_rgb(240), converter_rgb(242), converter_rgb(246));
+
+            init_pair(2, COLOR_BLACK, COLOR_CYAN);
+            init_color(COLOR_CYAN, converter_rgb(209), converter_rgb(233), converter_rgb(246));
+            init_color(COLOR_BLACK, 0, 0, 0);
+
+            init_pair(3, COLOR_BLACK, COLOR_YELLOW);
+            init_color(COLOR_YELLOW, converter_rgb(255), converter_rgb(233), 0);
+            init_color(COLOR_BLACK, 0, 0, 0);
 
             const int quadrado_removerY = (3*ALTURA_MAX_CONSOLE)/5;
             const int quadrado_removerX = 50;
@@ -669,6 +755,12 @@ int menu(int opc)
             WINDOW * janela_titulo = newwin(tituloY, tituloX, 2, (LARGURA_MAX_CONSOLE-tituloX)/2);
             WINDOW * ler_remover = newwin(quadrado_removerY-2, quadrado_removerX-2, getbegy(janela_remover_produtos)+1, getbegx(janela_remover_produtos)+1);
 
+            wbkgd(janela_externa, COLOR_PAIR(2));
+            wbkgd(janela_remover_produtos, COLOR_PAIR(1));
+            wbkgd(janela_info, COLOR_PAIR(1));
+            wbkgd(janela_titulo, COLOR_PAIR(1));
+            wbkgd(ler_remover, COLOR_PAIR(1));
+
             refresh();
 
             box(janela_externa, 0, 0);
@@ -677,6 +769,7 @@ int menu(int opc)
             box(janela_titulo, 0, 0);
 
             mvwprintw(janela_titulo, tituloY/2, (tituloX-17)/2, "REMOVER  PRODUTOS");
+            mvwchgat(janela_titulo, tituloY/2, (tituloX-17)/2, 18, A_NORMAL, 3, NULL);
             mvwprintw(ler_remover, quadrado_removerY/10, (quadrado_removerX-18)/2, "Tipos de Remoção");
 
             if (total_itens == 0 || maior_id == 0)
@@ -684,7 +777,9 @@ int menu(int opc)
             else
             {
                 mvwprintw(janela_info, quadrado_removerY/10, 5, "Há %d Produtos registrados em estoque", total_itens);
+                mvwchgat(janela_info, quadrado_removerY/10, 8, quantidade_digitos(total_itens), A_NORMAL, 3, NULL);
                 mvwprintw(janela_info, getcury(janela_info)+3, 5, "Maior ID de produto registrado: %d", maior_id);
+                mvwchgat(janela_info, getcury(janela_info), 37, quantidade_digitos(maior_id), A_NORMAL, 3, NULL);
             }
             
             wrefresh(janela_externa);
@@ -841,6 +936,21 @@ int menu(int opc)
             cbreak();
             curs_set(0);
 
+            start_color();
+
+            init_pair(1, COLOR_BLUE, COLOR_WHITE);
+            init_color(COLOR_BLUE, converter_rgb(9), converter_rgb(16), converter_rgb(87));
+            init_color(COLOR_WHITE, converter_rgb(240), converter_rgb(242), converter_rgb(246));
+
+            init_pair(2, COLOR_BLACK, COLOR_CYAN);
+            init_color(COLOR_CYAN, converter_rgb(209), converter_rgb(233), converter_rgb(246));
+            init_color(COLOR_BLACK, 0, 0, 0);
+
+            init_pair(3, COLOR_BLACK, COLOR_YELLOW);
+            init_color(COLOR_YELLOW, converter_rgb(255), converter_rgb(233), 0);
+            init_color(COLOR_BLACK, 0, 0, 0);
+
+
             const int tabelaX = 145;
             const int tabelaY = 4*ALTURA_MAX_CONSOLE/5;
             const int tabela_posX = (LARGURA_MAX_CONSOLE-tabelaX)/2;
@@ -862,21 +972,25 @@ int menu(int opc)
 
             WINDOW * janela_externa = newwin(ALTURA_MAX_CONSOLE, LARGURA_MAX_CONSOLE, 0, 0);
             WINDOW * tabela_produtos = newwin(tabelaY, tabelaX, tabela_posY, tabela_posX);
+
             keypad(janela_externa, TRUE);
             refresh();
+
+            wbkgd(janela_externa, COLOR_PAIR(1));
+            wbkgd(tabela_produtos, COLOR_PAIR(2));
 
             box(janela_externa, 0, 0);
             wborder(tabela_produtos, 9553, 9553, 9552, 9552, 9556, 9559, 9562, 9565);
 
             mvwprintw(janela_externa, tabela_posY-3, (LARGURA_MAX_CONSOLE-18)/2, "TABELA DE PRODUTOS");
+            mvwchgat(janela_externa, tabela_posY-3, (LARGURA_MAX_CONSOLE-18)/2, 18, A_NORMAL, 3, NULL);
+
             mvwprintw(tabela_produtos, 2, 0, "╠");
             for (int i = 1; i < tabelaX-1; i++)
                 mvwprintw(tabela_produtos, 2, i, "═");
             mvwprintw(tabela_produtos, 2, tabelaX-1, "╣");     
             mvwprintw(tabela_produtos, 1, 1, 
             " ID ┃ CÓDIGO  FABRICA ┃                        NOME                        ┃   FABRICANTE   ┃ UNIDADE ┃ QUANTIDADE ┃ VALOR UNITÁRIO ┃ SUBTOTAL ");
-            
-            start_color();
 
             if (total_itens > 0)
             {
@@ -911,7 +1025,7 @@ int menu(int opc)
             mvwprintw(janela_externa, posY_barra, posX_seta_direita, " -> ");
             mvwprintw(janela_externa, posY_barra, (LARGURA_MAX_CONSOLE-(20+(2*digitos_paginas)))/2, "┃ PÁGINA %0*d   /   %0*d ┃",
             digitos_paginas, pagina_atual+1, digitos_paginas, total_paginas);
-            mvwchgat(janela_externa, posY_barra, tabela_posX, tabelaX , A_REVERSE, 0, NULL);
+            mvwchgat(janela_externa, posY_barra, tabela_posX, tabelaX , A_NORMAL, 3, NULL);
 
             mvwprintw(janela_externa, getcury(janela_externa)+2, (LARGURA_MAX_CONSOLE-26)/2, "[ESC] - Voltar para o Menu");
             wrefresh(janela_externa);
@@ -944,6 +1058,20 @@ int menu(int opc)
             cbreak();
             curs_set(0);
 
+            start_color();
+
+            init_pair(1, COLOR_BLUE, COLOR_WHITE);
+            init_color(COLOR_BLUE, converter_rgb(9), converter_rgb(16), converter_rgb(87));
+            init_color(COLOR_WHITE, converter_rgb(240), converter_rgb(242), converter_rgb(246));
+
+            init_pair(2, COLOR_BLACK, COLOR_CYAN);
+            init_color(COLOR_CYAN, converter_rgb(209), converter_rgb(233), converter_rgb(246));
+            init_color(COLOR_BLACK, 0, 0, 0);
+
+            init_pair(3, COLOR_BLACK, COLOR_YELLOW);
+            init_color(COLOR_YELLOW, converter_rgb(255), converter_rgb(233), 0);
+            init_color(COLOR_BLACK, 0, 0, 0);
+
             const int selecionarY = ALTURA_MAX_CONSOLE/2;
             const int selecionarX = LARGURA_MAX_CONSOLE/4;
             const int selecionar_pY = (ALTURA_MAX_CONSOLE-selecionarY)/2;
@@ -951,6 +1079,10 @@ int menu(int opc)
 
             WINDOW * janela_externa = newwin(ALTURA_MAX_CONSOLE, LARGURA_MAX_CONSOLE, 0, 0);
             WINDOW * janela_selecionar_filtro = newwin(selecionarY, selecionarX, selecionar_pY, selecionar_pX);
+
+            wbkgd(janela_externa, COLOR_PAIR(1));
+            wbkgd(janela_selecionar_filtro, COLOR_PAIR(2));
+
             keypad(janela_selecionar_filtro, TRUE);
             refresh();
 
@@ -1002,6 +1134,8 @@ int menu(int opc)
             box(janela_selecionar_filtro, 0, 0);
 
             WINDOW * ler_condicao = newwin(selecionarY-2, selecionarX-2, selecionar_pY+1, selecionar_pX+1);
+             wbkgd(ler_condicao, COLOR_PAIR(2));
+
             char buffer_condicao[20];
             float numero_condicao;
 
@@ -1102,6 +1236,8 @@ int menu(int opc)
             do {
             
             WINDOW * tabela_produtos = newwin(tabelaY, tabelaX, tabela_posY, tabela_posX);
+            wbkgd(tabela_produtos, COLOR_PAIR(2));
+
             keypad(janela_externa, TRUE);
             noecho();
             curs_set(0);
@@ -1115,26 +1251,31 @@ int menu(int opc)
                     
                     case 0:
                         mvwprintw(janela_externa, tabela_posY-3, (LARGURA_MAX_CONSOLE-30)/2, "PRODUTOS COM QUANTIDADE ZERADA");
+                        mvwchgat(janela_externa, tabela_posY-3, (LARGURA_MAX_CONSOLE-30)/2, 30, A_NORMAL, 3, NULL);
                         break;
                     case 1:
                         tamanho_titulo = 34+quantidade_digitos((int)numero_condicao);
 
                         mvwprintw(janela_externa, tabela_posY-3, (LARGURA_MAX_CONSOLE-tamanho_titulo)/2, "PRODUTOS COM QUANTIDADE MENOR QUE %d", (int)numero_condicao);
+                        mvwchgat(janela_externa, tabela_posY-3, (LARGURA_MAX_CONSOLE-30)/2, 34+quantidade_digitos((int)numero_condicao), A_NORMAL, 3, NULL);
                         break;
                     case 2:
                         tamanho_titulo = 34+quantidade_digitos((int)numero_condicao);
 
                         mvwprintw(janela_externa, tabela_posY-3, (LARGURA_MAX_CONSOLE-tamanho_titulo)/2, "PRODUTOS COM QUANTIDADE MAIOR QUE %d", (int)numero_condicao);
+                        mvwchgat(janela_externa, tabela_posY-3, (LARGURA_MAX_CONSOLE-30)/2, 34+quantidade_digitos((int)numero_condicao), A_NORMAL, 3, NULL);
                         break;
                     case 3:
                         tamanho_titulo = 29+quantidade_digitos((int)numero_condicao);
 
                         mvwprintw(janela_externa, tabela_posY-3, (LARGURA_MAX_CONSOLE-tamanho_titulo)/2, "PRODUTOS COM VALOR MENOR QUE %.2f", numero_condicao);
+                        mvwchgat(janela_externa, tabela_posY-3, (LARGURA_MAX_CONSOLE-30)/2, 32+quantidade_digitos((int)numero_condicao), A_NORMAL, 3, NULL);
                         break;
                     case 4:
                         tamanho_titulo = 29+quantidade_digitos((int)numero_condicao);
 
                         mvwprintw(janela_externa, tabela_posY-3, (LARGURA_MAX_CONSOLE-tamanho_titulo)/2, "PRODUTOS COM VALOR MAIOR QUE %.2f", numero_condicao);
+                        mvwchgat(janela_externa, tabela_posY-3, (LARGURA_MAX_CONSOLE-30)/2, 32+quantidade_digitos((int)numero_condicao), A_NORMAL, 3, NULL);
                         break;
                 }
                 
@@ -1236,7 +1377,7 @@ int menu(int opc)
             mvwprintw(janela_externa, posY_barra, posX_seta_direita, " -> ");
             mvwprintw(janela_externa, posY_barra, (LARGURA_MAX_CONSOLE-(20+(2*digitos_paginas)))/2, "┃ PÁGINA %0*d   /   %0*d ┃",
             digitos_paginas, pagina_atual+1, digitos_paginas, total_paginas);
-            mvwchgat(janela_externa, posY_barra, tabela_posX, tabelaX , A_REVERSE, 0, NULL);
+            mvwchgat(janela_externa, posY_barra, tabela_posX, tabelaX , A_NORMAL, 3, NULL);
 
             mvwprintw(janela_externa, getcury(janela_externa)+2, (LARGURA_MAX_CONSOLE-26)/2, "[ESC] - Voltar para o Menu");
 
@@ -1308,6 +1449,8 @@ void virgula_pra_ponto(char *str)
     for (int i = 0; i < tamanho_str; i++)
         if (str[i] == ',') str[i] = '.';
 }
+
+int converter_rgb(int cor) { return (cor*999)/255; }
 
 int atualizar_total_itens()
 {
