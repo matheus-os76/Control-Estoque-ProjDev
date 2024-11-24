@@ -6,9 +6,7 @@ Projeto de segundo semestre da faculdade destinado a ajudar *pequenas e locais e
 
 - [x] CRUD 📑
 - [x] Importar produtos com CSV
-- [ ] Alerta de Quantia Nula 0️⃣
-- [ ] Lista de Fabricantes
-- [ ] Temas 🎨
+- [x] Tema 🎨
 
 ## Compatibilidade
 
