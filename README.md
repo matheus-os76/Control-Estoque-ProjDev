@@ -4,7 +4,7 @@ Projeto de segundo semestre da faculdade destinado a ajudar *pequenas e locais e
 
 ## Lista de Funções
 
-- [x] CRUD 📑
+- [x] Adicionar, remover e editar produtos 📑
 - [x] Importar produtos com CSV
 - [x] Tema 🎨
 
